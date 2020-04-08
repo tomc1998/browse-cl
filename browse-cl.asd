@@ -6,8 +6,10 @@
   :license  "Specify license here"
   :version "0.0.1"
   :serial t
-  :depends-on (#:cepl #:cl-ppcre #:rtg-math.vari #:cepl.sdl2 #:cepl.sdl2-ttf #:swank #:livesupport #:cepl.skitter.sdl2 #:dirt)
+  :depends-on (#:cepl #:alexandria #:cl-ppcre #:rtg-math.vari #:cepl.sdl2 #:cepl.sdl2-ttf #:swank #:livesupport #:cepl.skitter.sdl2 #:dirt)
   :components ((:file "package")
+
+               ;; Low level rendering
                (:file "adj-c-array")
                (:file "font-cache")
                (:file "bin-packer")
@@ -15,4 +17,19 @@
                (:file "atlas-manager")
                (:file "font-renderer")
                (:file "painter")
+
+               ;; Lang
+               (:file "env")
+               (:file "scope")
+               (:file "builtin")
+               (:file "global-store")
+               (:file "ty")
+               (:file "expr")
+
+               ;; DOM
+               (:file "dom")
+
+               (:file "parse")
+
+               ;; Main
                (:file "browse-cl")))
