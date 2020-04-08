@@ -1,5 +1,3 @@
-;;;; browse-cl.lisp
-
 (in-package #:browse-cl)
 
 (defparameter *proj-mat* (rtg-math.projection:orthographic-v2 
@@ -7,6 +5,9 @@
 (defparameter *test-tex* nil)
 (defparameter *test-tex-sample* nil)
 (defparameter *blend-params* (make-blending-params))
+
+(defparameter *painter* nil)
+(defparameter *atlas-manager* nil)
 
 (defclass render-buf ()
   ((g-buf :initform (error "g-buf required") :initarg :g-buf :accessor g-buf)
@@ -52,7 +53,7 @@
 
 (register-event-listener (lambda (e) (oninput e)))
 
-(defun render ()
+(defun render-main ()
   (with-blending *blend-params*
     (loop for b in *render-buf-list* do
         (map-g #'prog-1 (g-stream b) :tex *test-tex-sample*))))
@@ -113,7 +114,6 @@
                   :uint8-vec4 (sdl2:surface-pixels surface))))
     ;; Free all surfaces
     (sdl2:free-surface surface)
-    (loop for ls in line-surfaces do (sdl2:free-surface ls))
     ret))
 
 (defun make-quad-rect (x y w h r g b a)
@@ -129,6 +129,8 @@
   (setf (clear-color cepl.context::*primary-context*) 
         (vec4 0.1 0.1 0.3 1.0))
   (cepl.sdl2-ttf:init-cepl-sdl2-ttf)
+  (setf *atlas-manager* (make-instance 'atlas-manager))
+  (setf *painter* (make-painter *atlas-manager*))
   (setf *test-tex* (cepl.sdl2-ttf:with-font (font "IBMPlexSans-Regular.otf" 18) 
                      (render-wrapped-text font "Hello, world! My name is Tom Cheng." 200)))
   (setf *test-tex-sample* (sample *test-tex*))
@@ -143,8 +145,10 @@
 (defun update ()
   (step-host) ;; Poll events
   (update-repl-link)
+  (flush *painter*)
   (clear)
-  (render)
+  (render *painter* #'prog-1)
+  (render-main)
   (swap))
 
 (let ((running nil))
