@@ -13,7 +13,7 @@
           :documentation "If true, then calling flush on this atlas-manager
                           will cause a repack")
    (curr-res-id :initform 0 :accessor curr-res-id :type fixnum)
-   (atlas :initform (make-atlas 64 64) :accessor atlas :type atlas)
+   (atlas :initform (make-atlas 256 256) :accessor atlas :type atlas)
    (resource-map :initform (make-hash-table :test #'equal) :accessor resource-map
                 :documentation 
                 "A map of texture names to the cpu-atlas-data. These can be
@@ -57,7 +57,7 @@
 (defmethod flush ((a atlas-manager))
   "Repacks everything in the atlas-manager, as long as some texture has been added"
   (when (not (dirty a)) (return-from flush))
-  (setf (atlas a) (make-atlas 64 64))
+  (setf (atlas a) (make-atlas 256 256))
   (maphash (lambda (k v)
              (setf (tex-rect v) 
                    (load-tex-from-c-array (atlas a) (data v) k))) 

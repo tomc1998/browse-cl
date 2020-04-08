@@ -13,5 +13,6 @@
                (:file "bin-packer")
                (:file "atlas")
                (:file "atlas-manager")
+               (:file "font-renderer")
                (:file "painter")
                (:file "browse-cl")))

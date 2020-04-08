@@ -52,16 +52,24 @@
          (tl (top-left tex))
          (br (bottom-right tex))
          (tr (vec2 (x br) (y tl)))
-         (bl (vec2 (x tl) (y br))))
+         (bl (vec2 (x tl) (y br)))
+
+         ;(tl (vec2 0.0 0.0))
+         ;(br (vec2 1.0 1.0))
+         ;(tr (vec2 1.0 0.0))
+         ;(bl (vec2 0.0 1.0))
+         
+         )
+    (print (list tl br tr bl size))
 
    ;; Top left tri
-   (push-back-ac (vector pos bl col) (buf p))
-   (push-back-ac (vector (vec3 (+ (x pos) (x size)) 
-                               (+ (y pos) (y size))  
-                               (z pos)) tr col) (buf p))
-   (push-back-ac (vector (vec3 (x pos)
-                               (+ (y pos) (y size))
-                               (z pos)) tl col) (buf p))
+   ;;(push-back-ac (vector pos bl col) (buf p))
+   ;;(push-back-ac (vector (vec3 (+ (x pos) (x size)) 
+   ;;                            (+ (y pos) (y size))  
+   ;;                            (z pos)) tr col) (buf p))
+   ;;(push-back-ac (vector (vec3 (x pos)
+   ;;                            (+ (y pos) (y size))
+   ;;                            (z pos)) tl col) (buf p))
 
    ;; Lower right tri
    (push-back-ac (vector pos bl col) (buf p))

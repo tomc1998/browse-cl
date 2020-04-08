@@ -57,10 +57,10 @@
          (img-node (pack (bin a) name w h))
          (x (x-off img-node))
          (y (y-off img-node))
-         (uvx (/ (+ 1 (float x)) (float (width a))))
-         (uvy (/ (+ 1 (float y)) (float (height a))))
-         (uvw (/ (- 2 (float w)) (float (width a))))
-         (uvh (/ (- 2 (float h)) (float (height a)))))
+         (uvx (/ (+ 0.5 (float x)) (float (width a))))
+         (uvy (/ (+ 0.5 (float y)) (float (height a))))
+         (uvw (/ (- (float w) 1) (float (width a))))
+         (uvh (/ (- (float h) 1) (float (height a)))))
     (blit-c-array (cpu-tex a) img-data x y)
     (make-instance 'tex-rect 
                    :top-left (vec2 uvx uvy) 
@@ -84,7 +84,3 @@
     (setf (%cepl.types:c-array-element-pixel-format (cpu-tex a))
          (cepl.pixel-formats::make-pixel-format :components :rgba :type :uint8))
     a))
-
-(defun test ()
-  (let ((a (make-atlas 1024 1024)))
-    (load-tex a "dark-wood.png")))
