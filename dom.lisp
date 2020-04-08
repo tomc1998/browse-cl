@@ -1,5 +1,10 @@
 (in-package #:browse-cl)
 
+(deftype concrete-tag () 
+  "Concrete DOM nodes - for HTML, this list would contain div, ul, ol, li,
+   span, etc"
+  '(member col row))
+
 (defclass attr ()
   ((name :initarg :name :accessor name :type string)
    (val :initarg :val :accessor val :type expr))
@@ -32,7 +37,7 @@
                           string for use in a concrete-text-node")))
 
 (defclass template-concrete-dom-node (template-dom-node)
- ((tag :initarg :tag :accessor tag :type string)
+ ((tag :initarg :tag :accessor tag :type concrete-tag)
   (attrs :initarg :attrs :accessor attrs :type list
          :documentation "List of attr")
   (children :initarg :children :accessor children :type list :initform (list)
@@ -40,25 +45,32 @@
  (:documentation "This functions exactly like a normal concrete-dom-node, but
                   has templated attributes."))
 
-(defclass concrete-dom-node (dom-node) () 
+(defclass concrete-dom-node (dom-node) 
+  ((attrs :initarg :attrs :accessor attrs :type list
+          :documentation "List of const-attr")
+   (layout-annot :initform nil :accessor layout-annot 
+                 :type (or layout-annot null)
+                 :documentation "This is set when layed out - see
+                                 layout.lisp.")) 
  (:documentation "This class is a node, many of which makes up a concrete DOM
                    which can be rendered.")) 
 
 (defclass simple-concrete-dom-node (concrete-dom-node)
- ((tag :initarg :tag :accessor tag :type string)
-   (attrs :initarg :attrs :accessor attrs :type list
-          :documentation "List of const-attr")
+  ((tag :initarg :tag :accessor tag :type concrete-tag)
    (children :initarg :children :accessor children :type list :initform (list)
              :documentation "A list of concrete-dom-node children.")))
 
-(defclass concrete-text-node (dom-node)
-  ((attrs :initarg :attrs :accessor attrs :type list
-          :documentation "List of const-attr")
-   (val :initarg :val :accessor val :type string))
+(defclass concrete-text-node (concrete-dom-node)
+  ((val :initarg :val :accessor val :type string))
   (:documentation "This is a special case of a concrete-dom-node. It is a text
                    node, where 'children' is always empty. Instead, it contains
                    a single 'val', which contains the string of this text
                    node."))
+
+(defmethod find-attr ((n concrete-dom-node) name)
+  "name - a string, name of the attr (upcase)
+   Returns nil if no attr found"
+  (find-if (lambda (x) (string= name (name x))) (attrs n)))
 
 (defmethod expand-template-dom-node ((e env) (n template-concrete-dom-node))
   (make-instance

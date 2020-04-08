@@ -28,6 +28,7 @@
 
                ;; DOM
                (:file "dom")
+               (:file "layout")
 
                (:file "parse")
 

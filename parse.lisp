@@ -41,11 +41,24 @@
   (cond
     ((listp form)
     ;; Assume DOM node for now
-     (parse-dom-node s form))
+    (parse-dom-node s form))
     ((integerp form) (make-instance 'constant :ty *ty-int* :val form))
     ((numberp form) (make-instance 'constant :ty *ty-num* :val form))
     ((stringp form) (make-instance 'constant :ty *ty-string* :val form))
     (t (error "Unimpl"))))
+
+(defun parse-concrete-tagname (tl-expr name)
+  (if (member name '("COL" "ROW") :test #'string=)
+      (intern name)
+      (error 'browse-parse-error :tl-expr tl-expr 
+             :expr name :msg "Unrecognised tag name")))
+
+(layout
+  (expand-template-dom-node 
+  (make-instance 'env)
+  (parse-dom-node 
+    (create-global-scope) 
+    '(col (text "Hello" "World") (text "My" "Name" "Is" "Tome")))))
 
 (defun parse-dom-node (s form)
   "Given a scope & dom node expr, parse & return a template-dom-node."
@@ -66,7 +79,7 @@
        (let ((attrs (parse-dom-node-key-attrs s (cdr form)))
              (children (parse-dom-node-pos-attrs s (cdr form))))
          (make-instance 'template-concrete-dom-node
-                        :tag tagname
+                        :tag (parse-concrete-tagname form tagname)
                         :attrs attrs
                         :children children))))))
 
