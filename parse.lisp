@@ -48,15 +48,10 @@
     (t (error "Unimpl"))))
 
 (defun parse-concrete-tagname (tl-expr name)
-  (if (member name '("COL" "ROW") :test #'string=)
+  (if (member name '("COL" "EMPTY" "ROW") :test #'string=)
       (intern name)
       (error 'browse-parse-error :tl-expr tl-expr 
              :expr name :msg "Unrecognised tag name")))
-
-(layout
-  (expand-template-dom-node 
-  (make-instance 'env)
-  (parse-dom-node (create-global-scope) '(text "Hello" "World"))))
 
 (defun parse-dom-node (s form)
   "Given a scope & dom node expr, parse & return a template-dom-node."

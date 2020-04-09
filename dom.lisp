@@ -3,7 +3,7 @@
 (deftype concrete-tag () 
   "Concrete DOM nodes - for HTML, this list would contain div, ul, ol, li,
    span, etc"
-  '(member col row))
+  '(member col row empty))
 
 (defclass attr ()
   ((name :initarg :name :accessor name :type string)
