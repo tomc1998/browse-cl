@@ -21,7 +21,7 @@
                (:file "font-renderer")
                (:file "painter")
 
-               ;; Lang
+               ;; Lang runtime / def
                (:file "env")
                (:file "scope")
                (:file "builtin")
@@ -33,7 +33,11 @@
                (:file "dom")
                (:file "layout")
 
+               ;; Compiler
                (:file "parse")
+
+               ;; Rendering
+               (:file "renderer")
 
                ;; Main
                (:file "browse-cl")))

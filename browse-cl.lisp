@@ -1,11 +1,12 @@
 (in-package #:browse-cl)
 
 (defparameter *proj-mat* (rtg-math.projection:orthographic-v2 
-                           (vec2 800.0 600.0) -1.0 1.0))
-(defparameter *test-tex* nil)
+                           (vec2 800.0 600.0) -1000.0 1000.0))
 (defparameter *blend-params* (make-blending-params))
 
 (defparameter *painter* nil)
+(defparameter *root* nil)
+(defparameter *root-concrete* nil)
 (defparameter *atlas-manager* nil)
 
 (defclass render-buf ()
@@ -55,21 +56,34 @@
 (defun render-main ()
   (clear)
   (with-blending *blend-params*
-    (render *painter* #'prog-1)))
+    (render-painter *painter* #'prog-1)))
 
 (defun init ()
   (setf (clear-color cepl.context::*primary-context*) 
         (vec4 0.1 0.1 0.3 1.0))
   (cepl.sdl2-ttf:init-cepl-sdl2-ttf)
   (setf *atlas-manager* (make-instance 'atlas-manager))
-  (setf *test-tex* (render-wrapped-text-to-atlas-manager 
-                     *atlas-manager* 
-                     "IBMPlexSans-Regular.otf" 24 "Hello, world! My name is Tom Cheng." 200)) 
-  (setf *painter* (make-painter *atlas-manager*)))
+  (setf *painter* (make-painter *atlas-manager*))
+
+  ;; Setup test DOM
+  (setf *root* 
+        (parse-dom-node (create-global-scope) 
+                          '(row 
+                             (empty :w 100 :h 100) 
+                             (empty :w 50 :h 50) 
+                             (col :max-h 200 
+                              (text :max-w 48 :max-h 48 "Hello" "World") 
+                              (empty :w 32 :weight 1) 
+                              (text "My name is tom")))))
+  (setf *root-concrete* (expand-template-dom-node (make-instance 'env) *root*))
+  (layout *root-concrete*)
+  )
 
 (defun update ()
   (step-host) ;; Poll events
   (update-repl-link)
+  (clear-painter *painter*)
+  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
   (flush *painter*)
   (render-main)
   (swap))

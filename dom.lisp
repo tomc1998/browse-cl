@@ -50,8 +50,12 @@
           :documentation "List of const-attr")
    (layout-annot :initform nil :accessor layout-annot 
                  :type (or layout-annot null)
-                 :documentation "This is set when layed out - see
-                                 layout.lisp.")) 
+                 :documentation "This is set when layed out - see layout.lisp.")
+   (render-annot :initform nil :accessor render-annot 
+                 :type (or render-annot null)
+                 :documentation "This is set when rendered - see renderer.lisp.
+                                 The true value of this depends on the type of
+                                 DOM node.")) 
  (:documentation "This class is a node, many of which makes up a concrete DOM
                    which can be rendered.")) 
 
