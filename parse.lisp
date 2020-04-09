@@ -56,9 +56,7 @@
 (layout
   (expand-template-dom-node 
   (make-instance 'env)
-  (parse-dom-node 
-    (create-global-scope) 
-    '(col (text "Hello" "World") (text "My" "Name" "Is" "Tome")))))
+  (parse-dom-node (create-global-scope) '(text "Hello" "World"))))
 
 (defun parse-dom-node (s form)
   "Given a scope & dom node expr, parse & return a template-dom-node."

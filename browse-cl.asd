@@ -9,6 +9,9 @@
   :depends-on (#:cepl #:alexandria #:cl-ppcre #:rtg-math.vari #:cepl.sdl2 #:cepl.sdl2-ttf #:swank #:livesupport #:cepl.skitter.sdl2 #:dirt)
   :components ((:file "package")
 
+               ;; Util / defs
+               (:file "error")
+
                ;; Low level rendering
                (:file "adj-c-array")
                (:file "font-cache")

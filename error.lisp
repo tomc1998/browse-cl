@@ -7,3 +7,9 @@
    (tl-expr :initform :tl-expr :reader tl-expr
             :documentation "The top-level expr this parse error occurred in"
             )))
+
+(define-condition layout-overflow-error (error)
+  ((n :initarg :n :reader n :type concrete-dom-node
+      :documentation "The concrete-dom-node that failed to layout")
+   (wcons :initarg :wcons :reader wcons :type constraint)
+   (hcons :initarg :hcons :reader hcons :type constraint)))
