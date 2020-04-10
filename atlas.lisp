@@ -24,8 +24,7 @@
    ;; Width of tex in pixels
    (width :initarg :width :accessor width :type integer)
    ;; Height of tex in pixels
-   (height :initarg :height :accessor height :type integer)
-   ))
+   (height :initarg :height :accessor height :type integer)))
 
 (defmethod dimensions ((tr tex-rect))
   (list (width tr) (height tr)))
@@ -50,7 +49,8 @@
   "Given a c-array, load that texture data into the atlas. c-array element type
    should be a :uint8-vec4, each int representing a single rgba8888 pixel.
 
-   NOTE: c-array must be 2 dimensional!"
+   NOTE: c-array must be 2 dimensional!
+   NOTE: img-data will not be freed by this function, free it yourself!"
   (assert (= 2 (length (dimensions img-data))))
   (let* ((w (nth 0 (dimensions img-data)))
          (h (nth 1 (dimensions img-data)))
@@ -70,17 +70,22 @@
 (defmethod load-tex ((a atlas) filename)
   "Load a texture to a, throws bin-packer-full if atlas full. Returns a
    tex-rect, valid for this atlas."
-  (load-tex-from-c-array a (dirt:load-image-to-c-array filename) filename))
+  (let ((data (dirt:load-image-to-c-array filename))) 
+    (load-tex-from-c-array a data filename)
+    (free-c-array data)))
 
 (defun make-atlas (width height)
-  (let ((a (make-instance 
+  (let* ((cpu-tex (make-c-array nil :dimensions (list width height) :element-type :uint8-vec4))
+         (gpu-tex (make-texture nil :dimensions (list width height) :element-type :rgba8 
+                                :pixel-format (cepl.pixel-formats::make-pixel-format 
+                                                :components :rgba :type :uint8)))
+         (a (make-instance 
              'atlas 
              :bin (make-bin-packer width height)
-             :cpu-tex (make-c-array nil :dimensions (list width height) :element-type :uint8-vec4)
-             :tex (make-texture nil :dimensions (list width height) :element-type :rgba8 
-                                :pixel-format (cepl.pixel-formats::make-pixel-format 
-                                                :components :rgba :type :uint8))
+             :cpu-tex cpu-tex
+             :tex gpu-tex
              :width width :height height)))
+    (sb-ext:finalize a (lambda () (free-c-array cpu-tex) (free-texture gpu-tex)))
     (setf (%cepl.types:c-array-element-pixel-format (cpu-tex a))
          (cepl.pixel-formats::make-pixel-format :components :rgba :type :uint8))
     a))

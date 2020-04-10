@@ -76,6 +76,7 @@
   (fill-tex p (white-tex p) pos :size size :col col))
 
 (defmethod flush ((p painter))
+  ;; TODO don't re-alloc buffers here, just buffersubdata
   (when (g-buf p) (cepl:free-gpu-array (g-buf p)))
   (when (g-stream p) (cepl:free-buffer-stream (g-stream p)))
   (if (> (len (buf p)) 0)

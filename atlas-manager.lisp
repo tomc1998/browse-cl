@@ -23,6 +23,17 @@
   (:documentation "A wrapper around atlas which tracks loaded resources, and
                    can unload & re-pack resources into the atlas."))
 
+(defun make-atlas-manager ()
+  (let* ((resource-map (make-hash-table :test #'equal))
+         (res (make-instance 'atlas-manager :resource-map resource-map)))
+    (sb-ext:finalize 
+      res (lambda () 
+            (maphash (lambda (k v) 
+                       (declare (ignore k)) 
+                       (free-c-array (data v))) 
+                     resource-map)))
+    res))
+
 (define-condition am-not-found-error (error)
   ((name :initarg :name :reader name)))
 (define-condition am-not-packed-error (error)

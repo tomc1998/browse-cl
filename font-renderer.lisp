@@ -65,6 +65,8 @@
                 (list width height) 
                 :uint8-vec4 (sdl2:surface-pixels surface)))
     ;; Free all surfaces
+    ;; Some reason if we free line-surfaces here we get a double free, probably
+    ;; because render-utf8-blended uses a finalizer, so don't free those
     (sdl2:free-surface surface)
     ret))
 
