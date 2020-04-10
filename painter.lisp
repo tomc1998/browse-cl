@@ -76,6 +76,8 @@
   (fill-tex p (white-tex p) pos :size size :col col))
 
 (defmethod flush ((p painter))
+  (when (g-buf p) (cepl:free-gpu-array (g-buf p)))
+  (when (g-stream p) (cepl:free-buffer-stream (g-stream p)))
   (if (> (len (buf p)) 0)
     (setf (g-buf p) 
           (make-gpu-array (subseq-c (inner (buf p)) 0 (len (buf p))) 
