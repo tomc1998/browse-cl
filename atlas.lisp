@@ -72,7 +72,10 @@
    tex-rect, valid for this atlas."
   (let ((data (dirt:load-image-to-c-array filename))) 
     (load-tex-from-c-array a data filename)
-    (free-c-array data)))
+    ;; TODO unclear whether or not c-array is finalized,
+    ;; seem to get mem errors with this line, check source
+    ;;(free-c-array data)
+    ))
 
 (defun make-atlas (width height)
   (let* ((cpu-tex (make-c-array nil :dimensions (list width height) :element-type :uint8-vec4))
@@ -85,7 +88,11 @@
              :cpu-tex cpu-tex
              :tex gpu-tex
              :width width :height height)))
-    (sb-ext:finalize a (lambda () (free-c-array cpu-tex) (free-texture gpu-tex)))
+    (sb-ext:finalize a (lambda () 
+                         ;; TODO unclear whether or not c-array is finalized,
+                         ;; seem to get mem errors with this line, check source
+                         ;;(free-c-array cpu-tex)
+                         ))
     (setf (%cepl.types:c-array-element-pixel-format (cpu-tex a))
          (cepl.pixel-formats::make-pixel-format :components :rgba :type :uint8))
     a))

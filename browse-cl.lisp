@@ -62,7 +62,7 @@
   (setf (clear-color cepl.context::*primary-context*) 
         (vec4 0.1 0.1 0.3 1.0))
   (cepl.sdl2-ttf:init-cepl-sdl2-ttf)
-  (setf *atlas-manager* (make-instance 'atlas-manager))
+  (setf *atlas-manager* (make-atlas-manager))
   (setf *painter* (make-painter *atlas-manager*))
 
   ;; Setup test DOM
@@ -76,8 +76,7 @@
                               (empty :w 32 :weight 1) 
                               (text "My name is tom")))))
   (setf *root-concrete* (expand-template-dom-node (make-instance 'env) *root*))
-  (layout *root-concrete*)
-  )
+  (layout *root-concrete*))
 
 (defun update ()
   (step-host) ;; Poll events

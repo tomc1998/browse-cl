@@ -14,12 +14,13 @@
                           will cause a repack")
    (curr-res-id :initform 0 :accessor curr-res-id :type fixnum)
    (atlas :initform (make-atlas 256 256) :accessor atlas :type atlas)
-   (resource-map :initform (make-hash-table :test #'equal) :accessor resource-map
+   (resource-map :initarg :resource-map :accessor resource-map
                 :documentation 
                 "A map of texture names to the cpu-atlas-data. These can be
                  used to re-pack the atlas, and aren't unloaded from the CPU
                  once packed (since many of these textures will be dynamically generated, 
-                  e.g. text)."))
+                  e.g. text).
+                 Make sure to free this when atlas-manager is finalized."))
   (:documentation "A wrapper around atlas which tracks loaded resources, and
                    can unload & re-pack resources into the atlas."))
 
@@ -30,7 +31,10 @@
       res (lambda () 
             (maphash (lambda (k v) 
                        (declare (ignore k)) 
-                       (free-c-array (data v))) 
+                       ;; TODO unclear whether or not c-array is finalized,
+                       ;; seem to get mem errors with this line, check source
+                       ;;(free-c-array (data v))
+                       ) 
                      resource-map)))
     res))
 
@@ -68,6 +72,7 @@
 (defmethod flush ((a atlas-manager))
   "Repacks everything in the atlas-manager, as long as some texture has been added"
   (when (not (dirty a)) (return-from flush))
+  ;; TODO don't re-make atlas here, just clear it
   (setf (atlas a) (make-atlas 256 256))
   (maphash (lambda (k v)
              (setf (tex-rect v) 
