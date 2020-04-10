@@ -15,7 +15,7 @@
             :documentation "A value of sb-ext:single-float-positive-infinity
                             indicates an unconstrained value.")))
 
-(defun constraint (&optional (min-val +neg-inf+) (max-val +pos-inf+))
+(defun constraint (&optional (min-val 0.0) (max-val +pos-inf+))
   (make-instance 'constraint 
                  :min-val (float min-val) 
                  :max-val (float max-val)))
@@ -163,10 +163,6 @@
       ;; Set this node's layout annot
       (setf (layout-annot n) 
             (make-instance 'layout-annot :size (calculate-final-size))))))
-
-(defmethod find-font-for-text-node ((n concrete-text-node))
-  ;; TODO implement
-  (load-font "IBMPlexSans-Regular.otf" 18))
 
 (defun measure-wrapped-text (font text &optional (width +pos-inf+))
   "Return (values w h), which is the width / height for this text, wrapped

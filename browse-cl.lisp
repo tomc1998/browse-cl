@@ -38,7 +38,7 @@
   (setf (cepl:resolution (cepl:current-viewport)) 
         (vec2 (float w) (float h)))
   (setf *proj-mat* (rtg-math.projection:orthographic-v2 
-                           (vec2 (float w) (float h)) -1.0 1.0)))
+                           (vec2 (float w) (float h)) -1000.0 1000.0)))
 
 (defun oninput (e)
   (cond
@@ -72,7 +72,7 @@
                              (empty :w 100 :h 100) 
                              (empty :w 50 :h 50) 
                              (col :max-h 200 
-                              (text :max-w 48 :max-h 48 "Hello" "World") 
+                              (text :max-w 48 :max-h 48 "Hello " "World") 
                               (empty :w 32 :weight 1) 
                               (text "My name is tom")))))
   (setf *root-concrete* (expand-template-dom-node (make-instance 'env) *root*))

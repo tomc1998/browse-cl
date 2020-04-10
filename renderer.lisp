@@ -18,7 +18,7 @@
   (assert (layout-annot n))
   (let ((x (float (+ x (x (pos (layout-annot n))))))
         (y (float (+ y (y (pos (layout-annot n))))))
-        (debug-col (vec4 (* depth 0.2) (* depth 0.2) (* depth 0.2) 255.0)))
+        (debug-col (vec4 (* depth 0.2) (* depth 0.2) (* depth 0.2) 1.0)))
     (when is-debug
       (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) debug-col))
     (loop for c in (children n) do (render-dom p c x y :depth (+ 1 depth) :is-debug is-debug))))
@@ -28,10 +28,25 @@
   (assert (layout-annot n))
   (let ((x (float (+ x (x (pos (layout-annot n))))))
         (y (float (+ y (y (pos (layout-annot n))))))
-        (debug-col (vec4 (* depth 0.2) (* depth 0.2) (* depth 0.2) 255.0))
+        (debug-col (vec4 (* depth 0.2) (* depth 0.2) (* depth 0.2) 1.0))
         (tra (render-annot n)))
     (when tra (assert (typep tra 'text-render-annot)))
     (when is-debug
-      (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) debug-col))
-    ;; TODO render text
-    ))
+      (fill-rect p (vec3 x y (float depth)) 
+                 (size (layout-annot n)) debug-col))
+    (when (not tra)
+      ;; Render text, store in cached-tex-name
+      (setf (render-annot n) 
+            (make-instance 
+              'text-render-annot
+              :cached-tex-name 
+              (render-wrapped-text-to-atlas-manager 
+                (atlas-manager p) 
+                (find-font-name-for-text-node n)
+                (find-font-size-for-text-node n)
+                (val n)
+                (floor (x (size (layout-annot n))))
+                255 255 255)))
+      (flush (atlas-manager p)))
+    (fill-tex p (cached-tex-name (render-annot n))
+              (vec3 x y (+ 1.0 (float depth))))))

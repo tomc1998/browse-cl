@@ -71,6 +71,18 @@
                    a single 'val', which contains the string of this text
                    node."))
 
+(defmethod find-font-name-for-text-node ((n concrete-text-node))
+  ;; TODO implement
+  "IBMPlexSans-Regular.otf")
+
+(defmethod find-font-size-for-text-node ((n concrete-text-node))
+  ;; TODO implement
+  18)
+
+(defmethod find-font-for-text-node ((n concrete-text-node))
+  (load-font (find-font-name-for-text-node n) 
+             (find-font-size-for-text-node n)))
+
 (defmethod find-attr ((n concrete-dom-node) name)
   "name - a string, name of the attr (upcase)
    Returns nil if no attr found"
