@@ -27,13 +27,15 @@
    ;; Doesn't contain receiver as a param, but that is an implicit first param.
    (ty :initarg :ty :accessor ty :type ty)))
 
-(defmethod get-method-type ((s scope) (m ty-method))
-  (make-ty-fn (mapcar (lambda (x) (codegen s (ty x))) (params m)) (codegen s (ret-ty m))))
+(defgeneric get-method-type (m))
 
-(defmethod get-method-type ((s scope) (m ty-inline-method))
-  (make-ty-fn (mapcar (lambda (x) (codegen s (ty x))) (params m)) (codegen s (ret-ty m))))
+(defmethod get-method-type ((m ty-method))
+  (make-ty-fn (mapcar (lambda (x) (ty x)) (params m)) (ret-ty m)))
 
-(defmethod get-method-type ((s scope) (m ty-extern-method)) (ty m))
+(defmethod get-method-type ((m ty-inline-method))
+  (make-ty-fn (mapcar (lambda (x) (ty x)) (params m)) (ret-ty m)))
+
+(defmethod get-method-type ((m ty-extern-method)) (ty m))
 
 ;; A primitive type is just a builtin type without any similarity to other
 ;; kinds when talking about its properties (e.g. it doesn't have struct
@@ -216,7 +218,7 @@
   "Search for a all method based on method name and params, return a list or
    nil if not found. If param-types fit into the method, returns true (uses is-subtype)."
   (loop for m in (methods ty) when (string= method-name (name m)) 
-        when (can-fn-be-called s (get-method-type s m) param-types)
+        when (can-fn-be-called s (get-method-type m) param-types)
         collect m))
 
 (defun is-method-complete-subtype (s m0 m1)
@@ -224,8 +226,8 @@
    are subtypes of all of m1's parameters, and they have the same number of
    parameters). 
   Returns nil otherwise."
-  (let ((m0-params (params (metadata (get-method-type s m0))))
-        (m1-params (params (metadata (get-method-type s m1))))) 
+  (let ((m0-params (params (metadata (get-method-type m0))))
+        (m1-params (params (metadata (get-method-type m1))))) 
     (when (/= (length m0-params) (length m1-params)) 
       (return-from is-method-complete-subtype nil))
    (every (curry #'is-subtype s) m0-params m1-params)))
@@ -303,7 +305,7 @@
               ;; If method doesn't exist, return false
               (when (not m0) (return-from is-structural-subtype nil))
               ;; If method isn't the same type, return false
-              (when (not (ty-eq (get-method-type s m0) (get-method-type s m1)))
+              (when (not (ty-eq (get-method-type m0) (get-method-type m1)))
                 (return-from is-structural-subtype nil))))
   t)
 
