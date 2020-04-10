@@ -74,7 +74,7 @@
                              (col :max-h 200 
                               (text :max-w 48 :max-h 48 "Hello " "World") 
                               (empty :w 32 :weight 1) 
-                              (text "My name is tom")))))
+                              (text :font-size 36 "My name is tom")))))
   (setf *root-concrete* (expand-template-dom-node (make-instance 'env) *root*))
   (layout *root-concrete*))
 
