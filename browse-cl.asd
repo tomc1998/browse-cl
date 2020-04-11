@@ -34,7 +34,10 @@
                (:file "layout")
 
                ;; Compiler
+               (:file "top-level-statement")
+               (:file "parse-tree")
                (:file "parse")
+               (:file "compiler")
 
                ;; Rendering
                (:file "renderer")

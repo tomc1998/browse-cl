@@ -77,9 +77,7 @@
 
 (defmethod find-font-size-for-text-node ((n concrete-text-node))
   (let ((fs-attr (find-attr n "FONT-SIZE"))) 
-    (if fs-attr (val (val fs-attr))
-        18
-        )))
+    (if fs-attr (val (val fs-attr)) 18)))
 
 (defmethod find-font-for-text-node ((n concrete-text-node))
   (load-font (find-font-name-for-text-node n) 

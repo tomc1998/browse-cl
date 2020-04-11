@@ -6,6 +6,7 @@
 
 (defparameter *painter* nil)
 (defparameter *root* nil)
+(defparameter *env* nil)
 (defparameter *root-concrete* nil)
 (defparameter *atlas-manager* nil)
 
@@ -66,16 +67,19 @@
   (setf *painter* (make-painter *atlas-manager*))
 
   ;; Setup test DOM
-  (setf *root* 
-        (parse-dom-node (create-global-scope) 
-                          '(row 
-                             (empty :w 100 :h 100) 
-                             (empty :w 50 :h 50) 
-                             (col :max-h 200 
-                              (text :max-w 48 :max-h 48 "Hello " "World") 
-                              (empty :w 32 :weight 1) 
-                              (text :font-size 36 "My name is tom")))))
-  (setf *root-concrete* (expand-template-dom-node (make-instance 'env) *root*))
+  (multiple-value-bind (tree env) 
+    (compile-browser-program
+      '((var my-font-size int 48)
+        (row 
+          (empty :w 100 :h 100) 
+          (empty :w 50 :h 50) 
+          (col :max-h 200 
+               (text :max-w 48 :max-h 48 "Hello " "World") 
+               (empty :w 32 :weight 1) 
+               (text :font-size my-font-size "My name is tom")))))
+    (setf *root* tree)
+    (setf *env* env))
+  (setf *root-concrete* (expand-template-dom-node *env* *root*))
   (layout *root-concrete*))
 
 (defun update ()

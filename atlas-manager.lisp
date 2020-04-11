@@ -1,5 +1,7 @@
 (in-package #:browse-cl)
 
+(defparameter *atlas-size* 4096)
+
 (defclass cpu-atlas-data ()
   ((data :initarg :data :accessor data :type c-array 
          :documentation "The CPU-side data backing the atlas")
@@ -13,7 +15,7 @@
           :documentation "If true, then calling flush on this atlas-manager
                           will cause a repack")
    (curr-res-id :initform 0 :accessor curr-res-id :type fixnum)
-   (atlas :initform (make-atlas 256 256) :accessor atlas :type atlas)
+   (atlas :initform (make-atlas *atlas-size* *atlas-size*) :accessor atlas :type atlas)
    (resource-map :initarg :resource-map :accessor resource-map
                 :documentation 
                 "A map of texture names to the cpu-atlas-data. These can be
@@ -73,7 +75,7 @@
   "Repacks everything in the atlas-manager, as long as some texture has been added"
   (when (not (dirty a)) (return-from flush))
   ;; TODO don't re-make atlas here, just clear it
-  (setf (atlas a) (make-atlas 256 256))
+  (setf (atlas a) (make-atlas *atlas-size* *atlas-size*))
   (maphash (lambda (k v)
              (setf (tex-rect v) 
                    (load-tex-from-c-array (atlas a) (data v) k))) 
