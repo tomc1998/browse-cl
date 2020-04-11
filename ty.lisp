@@ -14,13 +14,16 @@
 ;; An un-named method, which acts like a macro
 (defclass ty-inline-method ()
   ((name :initarg :name :accessor name :type string)
-   (params :initarg :params :accessor params :type list)
+   (params :initarg :params :accessor params :type list
+           :documentation "List of param"
+           )
    (ret-ty :initarg :ret-ty :accessor ret-ty :type ty)
    ;; A function which takes params of the types given above (with the first
-   ;; param being the this argument), and returns a common lisp expression to
-   ;; be evaluated.
-   ;; All parameters will be code-genned to their common lisp values.
-   (codegen-fn :initarg :codegen-fn :accessor codegen-fn :type function)))
+   ;; param being the 'this' argument, then the rest of the params taking the
+   ;; types of the params specified in the 'params' list), and returns a common
+   ;; lisp value.  
+   ;; Parameters should be given in their common lisp values.
+   (eval-fn :initarg :eval-fn :accessor eval-fn :type function)))
 
 (defclass ty-extern-method ()
   ((name :initarg :name :accessor name :type string)
@@ -40,7 +43,7 @@
 ;; A primitive type is just a builtin type without any similarity to other
 ;; kinds when talking about its properties (e.g. it doesn't have struct
 ;; fields)
-(deftype kind () '(member prim fn struct opt arr kind))
+(deftype kind () '(member prim fn component struct opt arr kind))
 
 (defclass ty ()
   (;; Used for printing and equality checking
@@ -57,49 +60,6 @@
   ((name :initarg :name :accessor name :type string)
    (ty :initarg :ty :accessor ty :type ty)))
 
-(defmacro def-inline-methods (&rest methods)
-  "Convenience macro for defining a list of inline methods.
-   (def-inline-methods <def*>)
-
-   <def> ::= (<name> (<param*>) <ty> <body>)
-   <param> ::= <name> <ty>
-   <body> ::= quasiquoted expression which interpolates the params, plus a
-              special 'this' variable.
-
-   # Example
-
-   (def-inline-methods
-     (add (x int) `(+ ,this ,b)))
-
-   "
-  ;; Some of this is a leftover from a past project, which parses 'multi
-  ;; bodies' for separate codegen to both cl and parenscript.
-  `(list 
-     ,@(loop for m in methods
-             do (assert (= 4 (length m)))
-             collect 
-             (let* ((param-names (loop for (k v) on (nth 1 m) by #'cddr collect (string k)))
-                    (params (loop for (k v) on (nth 1 m) by #'cddr collect 
-                                  `(make-instance 'param :name ,(string k)
-                                                  :ty (parse-ty-expr (create-global-scope) ',v))))
-                    (is-multi-body-def (listp (car (nth 3 m))))
-                    (single-body (nth 3 m))
-                    (ps-body-form (if is-multi-body-def (cdr (assoc :ps (nth 3 m))) single-body))
-                    (ps-body `(lambda (this ,@(loop for p in param-names 
-                                                    collect (intern p)))
-                                ,ps-body-form))
-                    (cl-body-form (if is-multi-body-def (cdr (assoc :cl (nth 3 m))) single-body))
-                    (cl-body `(lambda (this ,@(loop for p in param-names 
-                                                    collect (intern p)))
-                                ,cl-body-form)))
-               (assert (not is-multi-body-def))
-               `(make-instance 
-                  'ty-inline-method 
-                  :name ,(string (nth 0 m)) 
-                  :params (list ,@params)
-                  :ret-ty (parse-ty-expr (create-global-scope) ',(nth 2 m))
-                  :codegen-fn ,ps-body)))))
-
 (defparameter *ty-any* (add-type-to-builtin-store (make-instance 'ty :name "ANY" :kind 'prim)))
 (defparameter *ty-void* (add-type-to-builtin-store (make-instance 'ty :name "VOID" :kind 'prim)))
 (defparameter *ty-string* (add-type-to-builtin-store (make-instance 'ty :name "STRING" :kind 'prim)))
@@ -109,6 +69,17 @@
 (defparameter *ty-event* (add-type-to-builtin-store (make-instance 'ty :name "EVENT" :kind 'prim)))
 (defparameter *ty-mouse-event* (add-type-to-builtin-store (make-instance 'ty :name "MOUSE-EVENT" :kind 'prim)))
 (defparameter *ty-kind* (add-type-to-builtin-store (make-instance 'ty :name "KIND" :kind 'kind)))
+
+;; More of a placeholder ty, if an item in the scope is labelled as a
+;; 'concrete-dom', it serves as a function which instantiates a
+;; template-concrete-dom-node. Mainly used to disambiguate actual function
+;; calls from dom node instantiations.
+;; TODO parameterise this, use make-ty-view-node
+(defparameter *ty-concrete-dom* 
+  (add-type-to-builtin-store (make-instance 'ty :name "CONCRETE-DOM" :kind 'component)))
+;; Placeholder ty, instance of a dom node
+(defparameter *ty-dom-node-instance* 
+  (add-type-to-builtin-store (make-instance 'ty :name "DOM-INSTANCE" :kind 'prim)))
 
 (defun parse-ty-expr (s form)
   "Given the scope, parse the form as a type and return a ty"
@@ -126,37 +97,6 @@
      (make-ty-fn (loop for p in (nth 1 form) collect (parse-ty-expr s p)) 
                  (parse-ty-expr s (nth 2 form))))
     (t (error "Unrecognised type '~S'" form)))) 
-
-(setf (methods *ty-string*)
-      (def-inline-methods 
-        (length () int `(length ,this))
-        (+ (s string) string `(concatenate 'string ,this ,s))
-        (= (s string) bool `(string= ,this ,s))))
-
-(setf (methods *ty-num*)
-      (def-inline-methods 
-        (+ (x int) num `(+ ,this ,x))
-        (+ (x num) num `(+ ,this ,x))))
-
-(setf (methods *ty-int*)
-      (def-inline-methods 
-        (+ (x int) int `(+ ,this ,x))
-        (+ (x num) num `(+ ,this ,x))
-        (> (x int) bool `(> ,this ,x))
-        (> (x num) bool `(> ,this ,x))
-        (< (x int) bool `(< ,this ,x))
-        (< (x num) bool `(< ,this ,x))
-        (>= (x int) bool `(>= ,this ,x))
-        (>= (x num) bool `(>= ,this ,x))
-        (<= (x int) bool `(<= ,this ,x))
-        (<= (x num) bool `(<= ,this ,x))
-        (= (x int) bool `(= ,this ,x))
-        (= (x num) bool `(= ,this ,x))))
-
-(setf (methods *ty-bool*)
-      (def-inline-methods 
-        (and (x bool) bool `(and ,this ,x))
-        (or (x bool) bool `(or ,this ,x))))
 
 (defun make-ty-view-node (params)
   "params - a list of 'param

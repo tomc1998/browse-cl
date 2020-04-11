@@ -21,6 +21,11 @@
 (defun init-builtin-scope (s)
   "Given a scope, add values to it to initialise the builtin environment.
    Returns the scope."
+  ;; DOM nodes
+  (set-in-scope s "COL" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
+  (set-in-scope s "ROW" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
+  (set-in-scope s "TEXT" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
+  (set-in-scope s "EMPTY" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
   s)
 
 (defmethod create-builtin-scope ((parent scope))

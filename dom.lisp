@@ -23,6 +23,15 @@
                    template dom cannot. A template dom will produce a concrete
                    dom."))
 
+(defgeneric walk-dom (root fn &optional val)
+  (:documentation "Walk the dom, calling (fn node val) on each node in a
+                   depth-first walk of the tree. 'val' is the value of fn
+                   called with the parent function. For the root node, a value
+                   of 'nil' is provided: although another default val can be provided
+                   through the optional 'val' parameter."))
+
+(defmethod get-type ((e dom-node)) *ty-dom-node-instance*)
+
 (defclass template-dom-node (dom-node) ()
   (:documentation "Any template DOM node. This can be higher level control
                    structures, like loops and conditionals, or normal DOM nodes
@@ -70,6 +79,12 @@
                    node, where 'children' is always empty. Instead, it contains
                    a single 'val', which contains the string of this text
                    node."))
+
+(defmethod walk-dom ((d concrete-text-node) fn &optional (val nil)) (funcall fn d val))
+(defmethod walk-dom ((d simple-concrete-dom-node) fn &optional (val nil)) 
+  (let ((val (funcall fn d val)))
+    (loop for c in (children d) do (walk-dom c fn val))))
+
 
 (defmethod find-font-name-for-text-node ((n concrete-text-node))
   ;; TODO implement

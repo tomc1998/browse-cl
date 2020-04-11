@@ -49,4 +49,5 @@
                 255 255 255)))
       (flush (atlas-manager p)))
     (fill-tex p (cached-tex-name (render-annot n))
-              (vec3 x y (+ 1.0 (float depth))))))
+              (vec3 x y (+ 1.0 (float depth))))
+    ))

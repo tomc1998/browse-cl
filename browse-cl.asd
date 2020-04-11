@@ -28,6 +28,7 @@
                (:file "global-store")
                (:file "ty")
                (:file "expr")
+               (:file "inline-methods")
 
                ;; DOM
                (:file "dom")

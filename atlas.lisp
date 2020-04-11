@@ -77,6 +77,9 @@
     ;;(free-c-array data)
     ))
 
+(defmethod clear-atlas ((a atlas))
+  (setf (bin a) (make-bin-packer (width a) (height a))))
+
 (defun make-atlas (width height)
   (let* ((cpu-tex (make-c-array nil :dimensions (list width height) :element-type :uint8-vec4))
          (gpu-tex (make-texture nil :dimensions (list width height) :element-type :rgba8 
@@ -92,7 +95,8 @@
                          ;; TODO unclear whether or not c-array is finalized,
                          ;; seem to get mem errors with this line, check source
                          ;;(free-c-array cpu-tex)
-                         ))
+                         ;;(free-texture gpu-tex)
+                         (free-c-array cpu-tex)))
     (setf (%cepl.types:c-array-element-pixel-format (cpu-tex a))
          (cepl.pixel-formats::make-pixel-format :components :rgba :type :uint8))
     a))

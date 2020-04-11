@@ -33,7 +33,7 @@
          (f (gethash size (fonts fsc))))
     (when f 
       (sdl2-ttf:close-font f)
-      (setf (gethash size (fonts fsc)) nil))))
+      (remhash size (fonts fsc)))))
 
 (defparameter *global-font-cache* (make-instance 'font-cache))
 

@@ -37,31 +37,56 @@
   (declare (ignore form))
   (error "Unimpl"))
 
+(defun parse-set-expr (form)
+  "Parses a cst-set-expr"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "SET" (string (car form)))))
+  (make-instance 'cst-set-expr 
+                 :target (parse-expr (nth 1 form)) 
+                 :val (parse-expr (nth 2 form))))
+
 (defun parse-expr (form)
   (cond
-    ((listp form)
-      ;; Assume DOM node for now
-      (parse-dom-node form))
+    ;; Anonymous function
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FN"))
+     (parse-anon-fn form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "SET"))
+     (parse-set-expr form))
+    ((listp form) (parse-fn-call form))
     ((integerp form) (make-instance 'cst-int-lit :val form))
     ((numberp form) (make-instance 'cst-num-lit :val form))
     ((stringp form) (make-instance 'cst-string-lit :val form))
     ((symbolp form) (make-instance 'cst-var :name (string form)))
     (t (error "Unimpl"))))
 
-(defun parse-concrete-tagname (tl-expr name)
-  (if (member name '("COL" "EMPTY" "ROW" "TEXT") :test #'string=)
-      (intern name)
-      (error 'browse-parse-error :tl-expr tl-expr 
-             :expr name :msg "Unrecognised tag name")))
-
-(defun parse-dom-node (form)
-  "Given a scope & dom node expr, parse & return a template-dom-node."
+(defun parse-fn-call (form)
+  "Parses a cst-fn-call"
   (assert (and (listp form) (symbolp (car form))))
-  (let ((tagname (string (car form)))
-        (attrs (parse-dom-node-key-attrs (cdr form)))
-        (children (parse-dom-node-pos-attrs (cdr form))))
-    (make-instance 'cst-dom-node :tagname (parse-concrete-tagname form tagname) 
-                   :attrs attrs :children children)))
+  (let ((name (string (car form)))
+        (key-args (parse-dom-node-key-attrs (cdr form)))
+        (pos-args (parse-dom-node-pos-attrs (cdr form))))
+    (make-instance 'cst-fn-call 
+                   :fn-name name 
+                   :key-args key-args :pos-args pos-args)))
+
+(defun parse-param-list (form)
+  "Parses the form into a list of 'cst-param"
+  ;; TODO proper error
+  (assert (and (listp form) (evenp (length form))))
+  (loop for (k v) on form by #'cddr 
+        ;; TODO proper error
+        do (assert (symbolp k)) 
+        collect (make-instance 'cst-param 
+                               :name (string k)
+                               :ty (parse-expr v))))
+
+(defun parse-anon-fn (form)
+  "Parses a cst-fn"
+  (assert (and (listp form) (symbolp (car form)) (string= (string (car form)) "FN")))
+  (let ((params (parse-param-list (nth 1 form)))
+        (ret-ty (parse-expr (nth 2 form)))
+        (body (mapcar #'parse-expr (nthcdr 3 form))))
+    (make-instance 'cst-fn :params params :ret-ty ret-ty :body body)))
 
 (defun parse-var-decl (form)
   ;; (var <name> [<ty>] <val>)
@@ -86,8 +111,7 @@
     (cond
       ((string= "VAR" tagname)
        (parse-var-decl form))
-      (t ;; Assume this is a dom node
-       (parse-dom-node form)))))
+      (t (parse-expr form)))))
 
 (defun parse-program (forms)
   "Run parse-top-level-form on all the given forms. Return a list of those top

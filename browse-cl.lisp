@@ -1,5 +1,6 @@
 (in-package #:browse-cl)
 
+(defparameter *screen-size* (vec2 800.0 600.0))
 (defparameter *proj-mat* (rtg-math.projection:orthographic-v2 
                            (vec2 800.0 600.0) -1000.0 1000.0))
 (defparameter *blend-params* (make-blending-params))
@@ -38,11 +39,54 @@
 (defun onresize (w h)
   (setf (cepl:resolution (cepl:current-viewport)) 
         (vec2 (float w) (float h)))
+  (setf *screen-size* (vec2 (float w) (float h)))
   (setf *proj-mat* (rtg-math.projection:orthographic-v2 
                            (vec2 (float w) (float h)) -1000.0 1000.0)))
 
+(defun update-root-concrete ()
+  (when *root-concrete* (unload-all-cache-textures))
+  (setf *root-concrete* (expand-template-dom-node *env* *root*))
+  (layout *root-concrete*))
+
+(defun unload-all-cache-textures ()
+  "Using the root DOM node, unload all cached textures from the atlas"
+  (walk-dom *root-concrete* 
+            (lambda (d v)
+              (when (render-annot d)
+                (when (typep (render-annot d) 'text-render-annot)
+                  (unload-tex *atlas-manager* 
+                              (cached-tex-name (render-annot d)))
+                  (setf (render-annot d) nil)
+                  )))))
+
+(defun process-on-click (env dom x y)
+  "Call on-click events on dom nodes
+
+   dom - a concrete DOM"
+  ;; Dumb hack here, we should correct our view mat to make 0,0 the top left
+  (let ((x (- x (/ (x *screen-size*) 2.0)))
+        (y (- (- y (/ (y *screen-size*) 2.0)))))
+    (walk-dom dom
+              (lambda (d parent-pos)
+                (assert (layout-annot d))
+                (let* ((la (layout-annot d))
+                       (dx (+ (x parent-pos) (x (pos la))))
+                       (dy (+ (y parent-pos) (y (pos la))))
+                       (dw (x (size la)))
+                       (dh (y (size la))))
+                  (when (and (>= x dx) (<= x (+ dw dx))
+                             (>= y dy) (<= y (+ dh dy)))
+                    (let ((on-click-fn (find-attr d "ON-CLICK")))
+                      (when on-click-fn (funcall (val (val on-click-fn)) env nil))))
+                  (pos la))) (vec2 0.0 0.0))))
+
 (defun oninput (e)
   (cond
+    ((eq :mousebuttonup (sdl2:get-event-type e))
+     (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
+            (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
+       (process-on-click *env* *root-concrete* x y)
+       (update-root-concrete)))
     ((eq :windowevent (sdl2:get-event-type e))
      (let ((event (plus-c:c-ref e sdl2-ffi:sdl-event :window :event))
            (d1 (plus-c:c-ref e sdl2-ffi:sdl-event :window :data1))
@@ -71,7 +115,8 @@
     (compile-browser-program
       '((var my-font-size int 48)
         (row 
-          (empty :w 100 :h 100) 
+          (empty :w 100 :h 100
+                 :on-click (fn (e mouse-event) void (set my-font-size (- my-font-size 1)))) 
           (empty :w 50 :h 50) 
           (col :max-h 200 
                (text :max-w 48 :max-h 48 "Hello " "World") 
@@ -79,8 +124,7 @@
                (text :font-size my-font-size "My name is tom")))))
     (setf *root* tree)
     (setf *env* env))
-  (setf *root-concrete* (expand-template-dom-node *env* *root*))
-  (layout *root-concrete*))
+  (update-root-concrete))
 
 (defun update ()
   (step-host) ;; Poll events

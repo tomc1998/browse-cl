@@ -55,10 +55,9 @@
     (tex-rect res)))
 
 (defmethod unload-tex ((a atlas-manager) name)
-  "Errors am-not-found-error if texture not found"
+  "Doesn't error if texture not found"
   (let ((res (gethash name (resource-map a))))
-    (when (not res) (error 'am-not-found-error :name name))
-    (setf (gethash name (resource-map a)) nil)))
+    (remhash name (resource-map a))))
 
 (defmethod gen-new-am-res-name ((a atlas-manager))
   (format nil "RES-ANON-~a" (incf (curr-res-id a))))
@@ -74,8 +73,7 @@
 (defmethod flush ((a atlas-manager))
   "Repacks everything in the atlas-manager, as long as some texture has been added"
   (when (not (dirty a)) (return-from flush))
-  ;; TODO don't re-make atlas here, just clear it
-  (setf (atlas a) (make-atlas *atlas-size* *atlas-size*))
+  (clear-atlas (atlas a))
   (maphash (lambda (k v)
              (setf (tex-rect v) 
                    (load-tex-from-c-array (atlas a) (data v) k))) 

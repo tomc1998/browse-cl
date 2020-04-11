@@ -15,32 +15,93 @@
   ((name :initarg :name :accessor name :type string)
    (val :initarg :val :accessor val :type cst-node)))
 
-(defclass cst-dom-node (cst-node)
-  ((tagname :initarg :tagname :accessor tagname :type symbol)
-   (attrs :initarg :attrs :accessor attrs :type list
-          :documentation "A list of cst-key-arg")
-   (children :initarg :children :accessor children :type list
-             :documentation "A list of cst-node")))
-
-(defmethod to-expr ((s scope) (c cst-dom-node))
-  (let
-    ((attrs (loop for a in (attrs c) collect 
-                  (make-instance 'attr :name (name a) 
-                                 :val (to-expr s (val a)))))
-     (children (mapcar (curry #'to-expr s) (children c))))
-    (cond
-    ((eq 'text (tagname c))
-     (make-instance 'template-text-node :attrs attrs :exprs children))
-    (t 
-     (make-instance 'template-concrete-dom-node 
-                    :tag (tagname c) :attrs attrs :children children)))))
-
 (defclass cst-fn-call (cst-node)
   ((fn-name :initarg :fn-name :accessor fn-name :type string)
    (key-args :initarg :key-args :accessor key-args :type list
              :documentation "A list of cst-key-arg")
    (pos-args :initarg :pos-args :accessor pos-args :type list
          :documentation "A list of cst-node")))
+
+(defmethod to-expr ((s scope) (c cst-fn-call))
+  (let* ((target (find-in-scope s (fn-name c)))
+         (arg0 (when (> (length (pos-args c)) 0) 
+                 (to-expr s (nth 0 (pos-args c)))))
+         (param-types (loop for x in (pos-args c) collect 
+                            (get-type (to-expr s x))))
+         (method-target 
+           (when arg0 
+             (car
+               (disambiguate-methods 
+                 s
+                 (find-ty-method s (get-type arg0) 
+                                 (fn-name c) param-types))))))
+    (when (and (not method-target) (not target)) 
+      ;; TODO proper error
+      (error "Can't find ~a" (fn-name c)))
+    (if (and method-target (= 0 (length (key-args c))))
+        ;; If this is a valid method call & there are no key args (which aren't
+        ;; valid when callind methods... yet), call a method
+        (if (typep method-target 'ty-inline-method) 
+            (make-instance 'apply-expr :fn (eval-fn method-target)
+                           :ty (ret-ty method-target)
+                           :args (mapcar (curry #'to-expr s) (pos-args c)))
+            (error "Unimpl method call"))
+        ;; Call freestanding fn or create component
+        (cond 
+          ((eq 'component (kind (get-type target)))
+           (let ((attrs (loop for a in (key-args c) collect 
+                              (make-instance 'attr :name (name a) 
+                                             :val (to-expr s (val a)))))
+                 (children (mapcar (curry #'to-expr s) (pos-args c))))
+             (cond
+               ((string= "TEXT" (fn-name c))
+                (make-instance 'template-text-node :attrs attrs :exprs children))
+               (t 
+                (make-instance 'template-concrete-dom-node 
+                               :tag (intern (fn-name c)) :attrs attrs :children children)))))
+          ((eq 'fn (kind (get-type target)))
+           (error "Unimplemented function calls"))
+          (t (error "Expected fn / component"))))))
+
+(defclass cst-set-expr (cst-node)
+  ((target :initarg :target :accessor target :type cst-node)
+   (val :initarg :val :accessor val :type cst-node))
+  (:documentation "A set expression
+                   
+                   # Examples
+                   (set x 123)
+                   (set y (+ y 123))"))
+
+(defmethod to-expr ((s scope) (c cst-set-expr))
+  (make-instance 'set-expr
+                 :place (to-expr s (target c))
+                 :val (to-expr s (val c))))
+
+(defclass cst-param (cst-node)
+  ((name :initarg :name :accessor name :type string)
+   (ty :initarg :ty :accessor ty :type cst-node)))
+
+(defclass cst-fn (cst-node)
+  ((params :initarg :params :accessor params :type list
+           :documentation "List of cst-param")
+   (ret-ty :initarg :ret-ty :accessor ret-ty :type cst-node)
+   (body :initarg :body :accessor body :type list
+         :documentation "List of cst-node"))
+  (:documentation "An anonymous function declaration
+
+                   # Example
+                   (fn (a ty b ty c ty) ret-ty 
+                       (do-stuff a b c) 
+                       (more-stuff))"))
+
+(defmethod to-expr ((s scope) (c cst-fn))
+  (make-instance 
+    'constant 
+    :ty (make-ty-fn (loop for p in (params c) collect (to-ty s (ty p))) 
+                    (to-ty s (ret-ty c)))
+    :val (eval `(lambda (--internal-env-- ,@(loop for p in (params c) collect (intern (name p))))
+                  ,@(loop for b in (body c) collect 
+                          `(eval-expr --internal-env-- ,(to-expr s b)))))))
 
 (defclass cst-var (cst-node)
   ((name :initarg :name :accessor name :type string)))
