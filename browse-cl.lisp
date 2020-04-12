@@ -46,7 +46,10 @@
 (defun update-root-concrete ()
   (when *root-concrete* (unload-all-cache-textures))
   (setf *root-concrete* (expand-template-dom-node *env* *root*))
-  (layout *root-concrete*))
+  (layout *root-concrete*)
+  (clear-painter *painter*)
+  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
+  (flush *painter*))
 
 (defun unload-all-cache-textures ()
   "Using the root DOM node, unload all cached textures from the atlas"
