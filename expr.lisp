@@ -56,14 +56,65 @@
   (apply (fn e) (mapcar (curry #'eval-expr env) (args e))))
 (defmethod get-type ((e apply-expr)) (ty e))
 
+(defclass arr-constructor (expr)
+  ((vals :initarg :vals :accessor vals :type 'list
+         :documentation "List of expr, must not be empy")))
+(defmethod get-type ((e arr-constructor))
+  (assert (> (length (vals e)) 0))
+  (make-ty-arr (get-type (nth 0 (vals e)))))
+(defmethod eval-expr ((env env) (e arr-constructor))
+  (let ((ret (make-array (list (length (vals e)))
+                         :adjustable t
+                         :fill-pointer 0
+                         :initial-element nil)))
+    (loop for x in (vals e) do
+          (vector-push-extend (eval-expr env x) ret))
+    ret))
+
+;; TODO Typecheck that all body exprs return the same type, since the value of
+;; a loop expr is the array containing all the iterations of all the body exprs
+(defclass loop-expr (expr)
+  ((item-loc :initarg :item-loc :accessor item-loc :type expr)
+   (target :initarg :target :accessor target :type expr)
+   (body :initarg :body :accessor body :type list
+         :documentation "List of expr")))
+
+(defmethod get-type ((e loop-expr))
+  (if (not (body e))
+      *ty-void*
+      (make-ty-arr (get-type (car (body e))))))
+
+(defmethod eval-expr ((env env) (e loop-expr))
+  (let* ((arr (eval-expr env (target e)))
+        (ret (make-array (list (* (length (body e)) (length arr))) 
+                         :adjustable t
+                         :fill-pointer 0
+                         :initial-element nil))) 
+    (loop for x across arr do
+          (set-in-place env (eval-expr-place env (item-loc e)) x)
+          (loop for b in (body e) do
+                (vector-push-extend (eval-expr env b) ret)))
+    ret))
+
+(defclass stack-alloc (expr)
+  ((id :initform nil :accessor id :type (or null var-id))
+   (ty :initarg :ty :accessor ty :type ty)))
+(defmethod get-type ((e stack-alloc))(ty e))
+(defmethod assure-stack-alloc ((env env) (e stack-alloc))
+  (when (not (id e)) (setf (id e) (alloc-stack env))))
+(defmethod eval-expr ((env env) (e stack-alloc))
+  (assure-stack-alloc env e)
+  (env-lookup env (id e)))
+(defmethod eval-expr-place ((env env) (e stack-alloc))
+  (assure-stack-alloc env e)
+  (make-instance 'id-place :id (id e)))
+
 (defclass runtime-value (expr)
   ((id :initarg :id :accessor id :type var-id)
    (ty :initarg :ty :accessor ty :type ty))
   (:documentation "Represents a runtime value"))
 (defmethod eval-expr ((env env) (e runtime-value)) 
-  (if (>= (id e) 0)
-      (aref (globals env) (id e))
-      (aref (stack env) (- (- (id e)) 1))))
+  (env-lookup env (id e)))
 (defmethod get-type ((e runtime-value)) (ty e))
 (defmethod eval-expr-place ((env env) (e runtime-value)) 
   (make-instance 'id-place :id (id e)))

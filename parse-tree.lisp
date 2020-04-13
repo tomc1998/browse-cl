@@ -77,6 +77,32 @@
                  :place (to-expr s (target c))
                  :val (to-expr s (val c))))
 
+(defclass cst-loop (cst-node)
+  ((item-name :initarg :item-name :accessor item-name :type string)
+   (target :initarg :target :accessor target :type expr)
+   (body :initarg :body :accessor body :type list
+         :documentation "A list of cst-node"))
+  (:documentation "A for loop
+                   
+                   # Example
+                   (for x in my-list
+                        (row (empty :w 40) (text x) (empty :w 40))
+                        (text x))"))
+
+(defmethod to-expr ((s scope) (c cst-loop))
+  (let* ((target (to-expr s (target c)))
+         (target-ty (get-type target))
+         (item-loc (make-instance 'stack-alloc 
+                                  :ty (metadata target-ty)))
+         (loop-scope (subscope s)))
+    (set-in-scope s (item-name c) item-loc)
+    (make-instance 
+      'loop-expr
+      :item-loc item-loc
+      :target target
+      :body (loop for b in (body c) collect 
+                  (to-expr loop-scope b)))))
+
 (defclass cst-param (cst-node)
   ((name :initarg :name :accessor name :type string)
    (ty :initarg :ty :accessor ty :type cst-node)))
@@ -135,6 +161,13 @@
   ((val :initarg :val :accessor val :type boolean)))
 (defmethod to-expr ((s scope) (c cst-bool-lit)) 
   (make-instance 'constant :ty *ty-bool* :val (val c)))
+
+(defclass cst-arr-lit (cst-node)
+  ((val :initarg :val :accessor val :type list
+        :documentation "List of cst-node")))
+(defmethod to-expr ((s scope) (c cst-arr-lit)) 
+  (make-instance 'arr-constructor 
+                 :vals (mapcar (curry #'to-expr s) (val c))))
 
 (defclass cst-var-decl ()
   ((name :initarg :name :accessor name :type string)

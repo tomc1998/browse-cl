@@ -45,6 +45,26 @@
                  :target (parse-expr (nth 1 form)) 
                  :val (parse-expr (nth 2 form))))
 
+(defun parse-arr-lit (form)
+  "Parses a cst-arr-lit"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "ARR" (string (car form)))))
+  (make-instance 'cst-arr-lit
+                 :val (loop for n in (nthcdr 1 form) 
+                            collect (parse-expr n))))
+
+(defun parse-loop (form)
+  "Parse a cst-loop"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "FOR" (string (car form)))))
+  (assert (and (symbolp (nth 2 form)) 
+               (string= "IN" (string (nth 2 form)))))
+  (assert (symbolp (nth 1 form)))
+  (make-instance 'cst-loop
+                 :item-name (string (nth 1 form))
+                 :target (parse-expr (nth 3 form))
+                 :body (mapcar #'parse-expr (nthcdr 4 form))))
+
 (defun parse-expr (form)
   (cond
     ;; Anonymous function
@@ -52,6 +72,10 @@
      (parse-anon-fn form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "SET"))
      (parse-set-expr form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "ARR"))
+     (parse-arr-lit form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FOR"))
+     (parse-loop form))
     ((listp form) (parse-fn-call form))
     ((integerp form) (make-instance 'cst-int-lit :val form))
     ((numberp form) (make-instance 'cst-num-lit :val form))
