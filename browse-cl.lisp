@@ -45,7 +45,7 @@
 
 (defun update-root-concrete ()
   (when *root-concrete* (unload-all-cache-textures))
-  (setf *root-concrete* (expand-template-dom-node *env* *root*))
+  (setf *root-concrete* (car (expand-template-dom-node *env* *root*)))
   (layout *root-concrete*)
   (clear-painter *painter*)
   (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
@@ -80,7 +80,7 @@
                   (when (and (>= x dx) (<= x (+ dw dx))
                              (>= y dy) (<= y (+ dh dy)))
                     (let ((on-click-fn (find-attr d "ON-CLICK")))
-                      (when on-click-fn (funcall (val (val on-click-fn)) env nil))))
+                      (when on-click-fn  (funcall (val (val on-click-fn)) env nil))))
                   (pos la))) (vec2 0.0 0.0))))
 
 (defun oninput (e)
@@ -89,6 +89,8 @@
      (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
             (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
        (process-on-click *env* *root-concrete* x y)
+       ;; TODO check if we need to update, rather than doing it regardless
+       ;; ALso, try subtree updates
        (update-root-concrete)))
     ((eq :windowevent (sdl2:get-event-type e))
      (let ((event (plus-c:c-ref e sdl2-ffi:sdl-event :window :event))
@@ -124,7 +126,9 @@
           (col :max-h 200 
                (text :max-w 48 :max-h 48 "Hello " "World") 
                (empty :w 32 :weight 1) 
-               (text :font-size my-font-size "My name is tom")))))
+               (text :font-size my-font-size "My name is tom")
+               (for x in (arr 1 2 3)
+                    (text "Hello" x))))))
     (setf *root* tree)
     (setf *env* env))
   (update-root-concrete))

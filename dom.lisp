@@ -37,6 +37,9 @@
                    structures, like loops and conditionals, or normal DOM nodes
                    with templated attributes."))
 
+(defmethod eval-expr ((env env) (n template-dom-node))
+  (expand-template-dom-node env n))
+
 (defclass template-text-node (template-dom-node)
   ((attrs :initarg :attrs :accessor attrs :type list
          :documentation "List of attr")
@@ -103,8 +106,22 @@
    Returns nil if no attr found"
   (find-if (lambda (x) (string= name (name x))) (attrs n)))
 
+(defmethod expand-template-dom-node ((e env) (expr expr))
+  (let ((val (eval-expr e expr)))
+    (cond
+      ((vectorp val) (loop for v across val append 
+                           (cond ((vectorp v) (coerce v 'list))
+                                 ((listp v) v)
+                                 (ti (list v)))))
+      ((listp val) val)
+      (t (list
+           (make-instance
+             'concrete-text-node
+             :attrs '()
+             :val (format nil "~a" val)))))))
+
 (defmethod expand-template-dom-node ((e env) (n template-concrete-dom-node))
-  (make-instance
+  (list (make-instance
     'simple-concrete-dom-node
     :tag (tag n) 
     :attrs (loop for a in (attrs n) collect 
@@ -113,11 +130,11 @@
                    :name (name a)
                    :val (make-instance 'constant :ty (get-type (val a)) 
                                        :val (eval-expr e (val a)))))
-    :children (loop for c in (children n) collect
-                    (expand-template-dom-node e c))))
+    :children (loop for c in (children n) append
+                    (expand-template-dom-node e c)))))
 
 (defmethod expand-template-dom-node ((e env) (n template-text-node))
-  (make-instance
+  (list (make-instance
     'concrete-text-node
     :attrs (loop for a in (attrs n) collect 
                  (make-instance 
@@ -128,6 +145,7 @@
     :val (apply (curry #'concatenate 'string) 
                 (loop for c in (exprs n) collect
                       (format nil "~a" (eval-expr e c))))))
+  
+  )
 
-
-(defmethod expand-template-dom-node ((e env) (n concrete-dom-node)) n)
+(defmethod expand-template-dom-node ((e env) (n concrete-dom-node)) (list n))

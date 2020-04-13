@@ -39,10 +39,8 @@
 
 (defmethod alloc-stack ((e env))
   (vector-push-extend nil (stack e))
-  (- (- (length (stack e)) 1) (stack-base e)))
+  (- (- (length (stack e)) (stack-base e))))
 
 (defmethod alloc-global ((e env))
   (vector-push-extend nil (globals e))
-  (- (length (globals e)) 1)
-  
-  )
+  (- (length (globals e)) 1))
