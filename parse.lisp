@@ -65,6 +65,16 @@
                  :target (parse-expr (nth 3 form))
                  :body (mapcar #'parse-expr (nthcdr 4 form))))
 
+(defun parse-if (form)
+  "Parse a cst-loop"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "IF" (string (car form)))))
+  (assert (and (<= (length form) 4) (>= (length form) 3)))
+  (make-instance 'cst-if
+                 :cond-expr (parse-expr (nth 1 form))
+                 :t-expr (parse-expr (nth 2 form))
+                 :f-expr (parse-expr (nth 3 form))))
+
 (defun parse-expr (form)
   (cond
     ;; Anonymous function
@@ -74,12 +84,16 @@
      (parse-set-expr form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "ARR"))
      (parse-arr-lit form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "IF"))
+     (parse-if form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FOR"))
      (parse-loop form))
     ((listp form) (parse-fn-call form))
     ((integerp form) (make-instance 'cst-int-lit :val form))
     ((numberp form) (make-instance 'cst-num-lit :val form))
     ((stringp form) (make-instance 'cst-string-lit :val form))
+    ((string= (string form) "T") (make-instance 'cst-bool-lit :val t))
+    ((string= (string form) "F") (make-instance 'cst-bool-lit :val nil))
     ((symbolp form) (make-instance 'cst-var :name (string form)))
     (t (error "Unimpl"))))
 

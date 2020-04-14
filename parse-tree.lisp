@@ -77,6 +77,16 @@
                  :place (to-expr s (target c))
                  :val (to-expr s (val c))))
 
+(defclass cst-if (cst-node)
+  ((cond-expr :initarg :cond-expr :accessor cond-expr :type cst-node)
+   (t-expr :initarg :t-expr :accessor t-expr :type cst-node)
+   (f-expr :initarg :f-expr :accessor f-expr :type cst-node)))
+(defmethod to-expr ((s scope) (c cst-if))
+  (make-instance 'if-expr
+                 :cond-expr (to-expr s (cond-expr c))
+                 :t-expr (to-expr s (t-expr c))
+                 :f-expr (to-expr s (f-expr c))))
+
 (defclass cst-loop (cst-node)
   ((item-name :initarg :item-name :accessor item-name :type string)
    (target :initarg :target :accessor target :type expr)

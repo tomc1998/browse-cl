@@ -71,6 +71,16 @@
           (vector-push-extend (eval-expr env x) ret))
     ret))
 
+(defclass if-expr (expr)
+  ((cond-expr :initarg :cond-expr :accessor cond-expr :type expr)
+   (t-expr :initarg :t-expr :accessor t-expr :type expr)
+   (f-expr :initarg :f-expr :accessor f-expr :type expr)))
+(defmethod get-type ((e if-expr)) (get-type (t-expr e)))
+(defmethod eval-expr ((env env) (e if-expr))
+  (if (eval-expr env (cond-expr e))
+      (eval-expr env (t-expr e))
+      (eval-expr env (f-expr e))))
+
 ;; TODO Typecheck that all body exprs return the same type, since the value of
 ;; a loop expr is the array containing all the iterations of all the body exprs
 (defclass loop-expr (expr)

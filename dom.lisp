@@ -144,8 +144,6 @@
                                        :val (eval-expr e (val a)))))
     :val (apply (curry #'concatenate 'string) 
                 (loop for c in (exprs n) collect
-                      (format nil "~a" (eval-expr e c))))))
-  
-  )
+                      (format nil "~a" (eval-expr e c)))))))
 
 (defmethod expand-template-dom-node ((e env) (n concrete-dom-node)) (list n))

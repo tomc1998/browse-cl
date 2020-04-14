@@ -119,8 +119,11 @@
   (multiple-value-bind (tree env) 
     (compile-browser-program
       '((var my-font-size int 48)
+        (var button-hovered bool nil)
         (row 
-          (empty :w 100 :h 100
+          (empty :w (if button-hovered 120 100) 
+                 :h (if button-hovered 120 100)
+                 :bind-hover button-hovered
                  :on-click (fn (e mouse-event) void (set my-font-size (- my-font-size 1)))) 
           (empty :w 50 :h 50) 
           (col :max-h 200 
