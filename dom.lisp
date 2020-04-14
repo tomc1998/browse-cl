@@ -23,19 +23,61 @@
                    template dom cannot. A template dom will produce a concrete
                    dom."))
 
-(defgeneric walk-dom (root fn &optional val)
-  (:documentation "Walk the dom, calling (fn node val) on each node in a
-                   depth-first walk of the tree. 'val' is the value of fn
-                   called with the parent function. For the root node, a value
-                   of 'nil' is provided: although another default val can be provided
-                   through the optional 'val' parameter."))
-
 (defmethod get-type ((e dom-node)) *ty-dom-node-instance*)
 
-(defclass template-dom-node (dom-node) ()
+(defclass template-dom-node (dom-node) 
+  ((dependent-env-vals 
+     :initarg :dependent-env-vals 
+     :accessor dependent-env-vals 
+     :type (array var-id)
+     :documentation "An array of environment IDs |should all be positive, since
+                     referring to stack IDs here makes no sense|
+                     If these environment IDs are changed, this node should be
+                     re-expanded.
+                     This can contain duplicates, and may well do in most cases.")
+   (related-concrete-node 
+     :initarg :related-concrete-node 
+     :accessor related-concrete-node 
+     :type (or null concrete-dom-node)
+     :documentation "A reference to the concrete dom node this expanded to
+                     previously - or nil if not expanded yet"))
   (:documentation "Any template DOM node. This can be higher level control
                    structures, like loops and conditionals, or normal DOM nodes
                    with templated attributes."))
+
+(defmethod find-dependent-env-vals ((n template-dom-node))
+  (loop for x across (dependent-env-vals n) collect x))
+
+(defgeneric find-nodes-which-need-expanding (env template-dom-node)
+  (:documentation "Given a root-level node, find the first top level nodes that
+                   need expanding in this tree, in order to sync the tree up to
+                   the program's state."))
+(defmethod find-nodes-which-need-expanding ((e env) (n template-dom-node))
+  (let ((res (list)))
+   (walk-expr n (lambda (x val)
+                  (when (and (not val) (dom-needs-expanding e x)) 
+                    (push x res)
+                    x)) 
+             nil)
+   res))
+
+(defgeneric dom-needs-expanding (env template-dom-node)
+  (:documentation "Returns true if the global state that this dom node relies
+                   on has changed since the last call to clear-dirty-globals.
+                   NOTE: Make sure to call init-dependent-env-vals before this."))
+(defmethod dom-needs-expanding ((env env) (e expr))
+  (loop for x in (find-dependent-env-vals e)
+        when (is-dirty env x) return t))
+(defmethod dom-needs-expanding ((e env) (n template-dom-node))
+  (loop for x across (dependent-env-vals n) when (is-dirty e x) return t))
+
+(defgeneric init-dependent-env-vals (template-dom-node) 
+  (:documentation "Call after creating a template-dom-node to set the
+                   dependent-env-vals value for this node. will NOT set the
+                   dependent-env-vals for its children, so use walk-expr for
+                   this."))
+
+(defmethod init-dependent-env-vals ((e expr)))
 
 (defmethod eval-expr ((env env) (n template-dom-node))
   (expand-template-dom-node env n))
@@ -47,6 +89,17 @@
           :documentation "A list of exprs, which when evaluated, formatted to a
                           string, then combined together, produce a single
                           string for use in a concrete-text-node")))
+(defmethod init-dependent-env-vals ((n template-text-node))
+  (let ((res (make-array '(0) 
+                         :element-type 'var-id 
+                         :fill-pointer 0 :adjustable t))) 
+    (loop for a in (attrs n) do 
+          (loop for x in (find-dependent-env-vals (val a)) do
+                (vector-push-extend x res)))
+    (loop for e in (exprs n) do
+          (loop for x in (find-dependent-env-vals e) do
+                (vector-push-extend x res)))
+    (setf (dependent-env-vals n) res)))
 
 (defclass template-concrete-dom-node (template-dom-node)
  ((tag :initarg :tag :accessor tag :type concrete-tag)
@@ -56,6 +109,19 @@
             :documentation "A list of template-concrete-dom-node children."))
  (:documentation "This functions exactly like a normal concrete-dom-node, but
                   has templated attributes."))
+(defmethod init-dependent-env-vals ((n template-concrete-dom-node))
+  (let ((res (make-array '(0) 
+                         :element-type 'var-id 
+                         :fill-pointer 0 :adjustable t))) 
+    (loop for a in (attrs n) do 
+          (loop for x in (find-dependent-env-vals (val a)) do
+                (vector-push-extend x res)))
+    (setf (dependent-env-vals n) res)))
+(defmethod walk-expr ((d expr) fn &optional (val nil)) (walk-expr d fn val))
+(defmethod walk-expr ((d template-text-node) fn &optional (val nil)) (funcall fn d val))
+(defmethod walk-expr ((d template-concrete-dom-node) fn &optional (val nil)) 
+  (let ((val (funcall fn d val)))
+    (loop for c in (children d) do (walk-expr c fn val))))
 
 (defclass concrete-dom-node (dom-node) 
   ((attrs :initarg :attrs :accessor attrs :type list
@@ -83,10 +149,10 @@
                    a single 'val', which contains the string of this text
                    node."))
 
-(defmethod walk-dom ((d concrete-text-node) fn &optional (val nil)) (funcall fn d val))
-(defmethod walk-dom ((d simple-concrete-dom-node) fn &optional (val nil)) 
+(defmethod walk-expr ((d concrete-text-node) fn &optional (val nil)) (funcall fn d val))
+(defmethod walk-expr ((d simple-concrete-dom-node) fn &optional (val nil)) 
   (let ((val (funcall fn d val)))
-    (loop for c in (children d) do (walk-dom c fn val))))
+    (loop for c in (children d) do (walk-expr c fn val))))
 
 
 (defmethod find-font-name-for-text-node ((n concrete-text-node))
@@ -112,7 +178,7 @@
       ((vectorp val) (loop for v across val append 
                            (cond ((vectorp v) (coerce v 'list))
                                  ((listp v) v)
-                                 (ti (list v)))))
+                                 (t (list v)))))
       ((listp val) val)
       (t (list
            (make-instance

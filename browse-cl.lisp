@@ -53,7 +53,7 @@
 
 (defun unload-all-cache-textures ()
   "Using the root DOM node, unload all cached textures from the atlas"
-  (walk-dom *root-concrete* 
+  (walk-expr *root-concrete* 
             (lambda (d v)
               (when (render-annot d)
                 (when (typep (render-annot d) 'text-render-annot)
@@ -69,7 +69,7 @@
   ;; Dumb hack here, we should correct our view mat to make 0,0 the top left
   (let ((x (- x (/ (x *screen-size*) 2.0)))
         (y (- (- y (/ (y *screen-size*) 2.0)))))
-    (walk-dom dom
+    (walk-expr dom
               (lambda (d parent-pos)
                 (assert (layout-annot d))
                 (let* ((la (layout-annot d))
@@ -83,12 +83,25 @@
                       (when on-click-fn  (funcall (val (val on-click-fn)) env nil))))
                   (pos la))) (vec2 0.0 0.0))))
 
+(defun process-dom-hover (env dom x y)
+  (let ((x (- x (/ (x *screen-size*) 2.0)))
+        (y (- (- y (/ (y *screen-size*) 2.0)))))
+    
+    ))
+
 (defun oninput (e)
   (cond
     ((eq :mousebuttonup (sdl2:get-event-type e))
      (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
             (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
        (process-on-click *env* *root-concrete* x y)
+       ;; TODO check if we need to update, rather than doing it regardless
+       ;; ALso, try subtree updates
+       (update-root-concrete)))
+    ((eq :mousemotion (sdl2:get-event-type e))
+     (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
+            (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
+       (process-dom-hover *env* *root-concrete* x y)
        ;; TODO check if we need to update, rather than doing it regardless
        ;; ALso, try subtree updates
        (update-root-concrete)))
@@ -119,11 +132,11 @@
   (multiple-value-bind (tree env) 
     (compile-browser-program
       '((var my-font-size int 48)
-        (var button-hovered bool nil)
+        (var button-hovered bool f)
         (row 
           (empty :w (if button-hovered 120 100) 
                  :h (if button-hovered 120 100)
-                 :bind-hover button-hovered
+                 :bind-state-hover button-hovered
                  :on-click (fn (e mouse-event) void (set my-font-size (- my-font-size 1)))) 
           (empty :w 50 :h 50) 
           (col :max-h 200 
