@@ -43,9 +43,45 @@
   (setf *proj-mat* (rtg-math.projection:orthographic-v2 
                            (vec2 (float w) (float h)) -1000.0 1000.0)))
 
-(defun update-root-concrete ()
-  (when *root-concrete* (unload-all-cache-textures))
-  (setf *root-concrete* (car (expand-template-dom-node *env* *root*)))
+(defun update-root-concrete (&key (force nil))
+  "Update the root
+
+   force - If true, this will update the whole root, rather than finding
+   subtrees which need updating due to state changes"
+  (if force
+      (setf *root-concrete* (car (expand-template-dom-node *env* *root*)))
+      (loop for x in (find-nodes-which-need-expanding *env* *root*) do
+            ;; First, find this node's parent
+            (let ((parent nil))
+              (walk-expr *root-concrete* 
+                         (lambda (n parent*)
+                           (when (member n (related-concrete-nodes x)) 
+                             (progn (setf parent parent*) nil)) 
+                           n) nil)
+              ;; Then, set this child in the parent's children
+              (assert parent)
+              (assert (typep parent 'simple-concrete-dom-node))
+              ;; Remove children associated with this template node
+              ;; TODO Unload texture caches
+              (let ((to-remove (list))
+                    (first-ix nil)) 
+                (loop for ii below (length (children parent))
+                      when (member (nth ii (children parent)) 
+                                   (related-concrete-nodes x))
+                      do (when (not first-ix) (setf first-ix ii)) (push ii to-remove))
+                (setf (children parent) 
+                      (loop for ii from 0 for x in (children parent)
+                            when (not (member ii to-remove)) collect x))
+
+                ;; Add children back
+                (assert first-ix)
+                (if (not (children parent))
+                    (setf (children parent) (expand-template-dom-node *env* x))
+                    (let ((old-cdr (cdr (nthcdr (- first-ix 1) (children parent)))))
+                      (setf (cdr (nthcdr (- first-ix 1) (children parent)))
+                          (concatenate 'list (expand-template-dom-node *env* x)
+                                       old-cdr))))))))
+  (clear-dirty-globals *env*)
   (layout *root-concrete*)
   (clear-painter *painter*)
   (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
@@ -138,16 +174,13 @@
                  :h (if button-hovered 120 100)
                  :bind-state-hover button-hovered
                  :on-click (fn (e mouse-event) void (set my-font-size (- my-font-size 1)))) 
-          (empty :w 50 :h 50) 
-          (col :max-h 200 
+          (col :max-h 400 
                (text :max-w 48 :max-h 48 "Hello " "World") 
-               (empty :w 32 :weight 1) 
-               (text :font-size my-font-size "My name is tom")
-               (for x in (arr 1 2 3)
-                    (text "Hello" x))))))
+               (text :font-size my-font-size "My name is tom")))))
     (setf *root* tree)
     (setf *env* env))
-  (update-root-concrete))
+  (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x)))
+  (update-root-concrete :force t))
 
 (defun update ()
   (step-host) ;; Poll events

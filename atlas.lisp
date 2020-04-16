@@ -33,12 +33,13 @@
   "Blit a 2d src c-array onto the 2d dst c-array, at the given position."
   (let ((w (first (dimensions src)))
         (h (second (dimensions src)))) 
-   (assert (= (length (dimensions dst)) (length (dimensions src)) 2))
-   (assert (>= (first (dimensions dst)) (+ x w)))
-   (assert (>= (second (dimensions dst)) (+ y h)))
-   (loop for xx below w do
-         (loop for yy below h do
-               (setf (aref-c dst (+ xx x) (+ yy y)) (aref-c src xx yy))))))
+    (assert (eq (c-array-element-type src) (c-array-element-type dst)))
+    (assert (= (length (dimensions dst)) (length (dimensions src)) 2))
+    (assert (>= (first (dimensions dst)) (+ x w)))
+    (assert (>= (second (dimensions dst)) (+ y h)))
+    (loop for xx below w do
+          (loop for yy below h do
+                (setf (aref-c dst (+ xx x) (+ yy y)) (aref-c src xx yy))))))
 
 (defparameter *num-anon-mem-tex* 0)
 (defun gen-anon-mem-tex-name ()

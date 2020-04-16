@@ -184,6 +184,7 @@
   (let* ((font (find-font-for-text-node n))
          (text-size (multiple-value-list (measure-wrapped-text font (val n) (max-val wcons)))))
     (when (> (nth 1 text-size) (max-val hcons))
+      (inspect n)
       (error 'layout-overflow-error :n n :wcons wcons :hcons hcons))
     (setf (layout-annot n) 
           (make-instance 'layout-annot 

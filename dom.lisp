@@ -35,11 +35,11 @@
                      If these environment IDs are changed, this node should be
                      re-expanded.
                      This can contain duplicates, and may well do in most cases.")
-   (related-concrete-node 
-     :initarg :related-concrete-node 
-     :accessor related-concrete-node 
-     :type (or null concrete-dom-node)
-     :documentation "A reference to the concrete dom node this expanded to
+   (related-concrete-nodes
+     :initarg :related-concrete-nodes
+     :accessor related-concrete-nodes
+     :type (or null list)
+     :documentation "A reference to the concrete dom node(s) this expanded to
                      previously - or nil if not expanded yet"))
   (:documentation "Any template DOM node. This can be higher level control
                    structures, like loops and conditionals, or normal DOM nodes
@@ -187,29 +187,33 @@
              :val (format nil "~a" val)))))))
 
 (defmethod expand-template-dom-node ((e env) (n template-concrete-dom-node))
-  (list (make-instance
-    'simple-concrete-dom-node
-    :tag (tag n) 
-    :attrs (loop for a in (attrs n) collect 
-                 (make-instance 
-                   'const-attr 
-                   :name (name a)
-                   :val (make-instance 'constant :ty (get-type (val a)) 
-                                       :val (eval-expr e (val a)))))
-    :children (loop for c in (children n) append
-                    (expand-template-dom-node e c)))))
+  (let ((ret (list (make-instance
+                     'simple-concrete-dom-node
+                     :tag (tag n) 
+                     :attrs (loop for a in (attrs n) collect 
+                                  (make-instance 
+                                    'const-attr 
+                                    :name (name a)
+                                    :val (make-instance 'constant :ty (get-type (val a)) 
+                                                        :val (eval-expr e (val a)))))
+                     :children (loop for c in (children n) append
+                                     (expand-template-dom-node e c))))))
+    (setf (related-concrete-nodes n) ret)
+    ret))
 
 (defmethod expand-template-dom-node ((e env) (n template-text-node))
-  (list (make-instance
-    'concrete-text-node
-    :attrs (loop for a in (attrs n) collect 
-                 (make-instance 
-                   'const-attr
-                   :name (name a) 
-                   :val (make-instance 'constant :ty (get-type (val a)) 
-                                       :val (eval-expr e (val a)))))
-    :val (apply (curry #'concatenate 'string) 
-                (loop for c in (exprs n) collect
-                      (format nil "~a" (eval-expr e c)))))))
+  (let ((ret (list (make-instance
+                     'concrete-text-node
+                     :attrs (loop for a in (attrs n) collect 
+                                  (make-instance 
+                                    'const-attr
+                                    :name (name a) 
+                                    :val (make-instance 'constant :ty (get-type (val a)) 
+                                                        :val (eval-expr e (val a)))))
+                     :val (apply (curry #'concatenate 'string) 
+                                 (loop for c in (exprs n) collect
+                                       (format nil "~a" (eval-expr e c))))))))
+    (setf (related-concrete-nodes n) ret)
+    ret))
 
 (defmethod expand-template-dom-node ((e env) (n concrete-dom-node)) (list n))

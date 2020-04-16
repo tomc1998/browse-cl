@@ -54,6 +54,7 @@
                     :b-mask #x0000ff00 :a-mask #x000000ff))
          ;; Render all lines of text to a separate surface
          (line-surfaces (loop for l in lines collect (sdl2-ttf:render-utf8-blended font l r g b 0)))
+         (ret-tmp nil)
          ;; Hold our return value
          (ret nil))
     ;; Blit all line-surfaces onto surface
@@ -61,9 +62,12 @@
           (sdl2:blit-surface ls (sdl2:make-rect 0 0 width line-height)
                              surface (sdl2:make-rect 0 (* ii line-height) width line-height)))
     ;; Convert surface to a tex
-    (setf ret (make-c-array-from-pointer 
+    (setf ret-tmp (make-c-array-from-pointer 
                 (list width height) 
                 :uint8-vec4 (sdl2:surface-pixels surface)))
+    ;; Copy ret-tmp to a new c-array
+    (setf ret (make-c-array nil :dimensions (list width height) :element-type :uint8-vec4))
+    (blit-c-array ret ret-tmp)
     ;; Free all surfaces
     ;; Some reason if we free line-surfaces here we get a double free, probably
     ;; because render-utf8-blended uses a finalizer, so don't free those

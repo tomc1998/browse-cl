@@ -1,6 +1,6 @@
 (in-package #:browse-cl)
 
-(defparameter *atlas-size* 4096)
+(defparameter *atlas-size* 1024)(defparameter *atlas-size* 1024)
 
 (defclass cpu-atlas-data ()
   ((data :initarg :data :accessor data :type c-array 
@@ -75,8 +75,8 @@
   (when (not (dirty a)) (return-from flush))
   (clear-atlas (atlas a))
   (maphash (lambda (k v)
-             (setf (tex-rect v) 
-                   (load-tex-from-c-array (atlas a) (data v) k))) 
+             (let ((data (load-tex-from-c-array (atlas a) (data v) k)))
+               (setf (tex-rect v) data))) 
            (resource-map a))
   (flush (atlas a))
   (setf (dirty a) nil))
