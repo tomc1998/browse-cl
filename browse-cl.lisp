@@ -77,10 +77,14 @@
                 (assert first-ix)
                 (if (not (children parent))
                     (setf (children parent) (expand-template-dom-node *env* x))
-                    (let ((old-cdr (cdr (nthcdr (- first-ix 1) (children parent)))))
-                      (setf (cdr (nthcdr (- first-ix 1) (children parent)))
-                          (concatenate 'list (expand-template-dom-node *env* x)
-                                       old-cdr))))))))
+                    (if (= 0 first-ix) 
+                        (setf (children parent) 
+                              (concatenate 'list (expand-template-dom-node *env* x) (children parent)))
+                        (let ((old-cdr (cdr (if (= 0 first-ix) (children parent) 
+                                                (nthcdr (- first-ix 1) (children parent))))))
+                          (setf (cdr (nthcdr (- first-ix 1) (children parent)))
+                                (concatenate 'list (expand-template-dom-node *env* x)
+                                             old-cdr)))))))))
   (clear-dirty-globals *env*)
   (layout *root-concrete*)
   (clear-painter *painter*)
@@ -119,11 +123,23 @@
                       (when on-click-fn  (funcall (val (val on-click-fn)) env nil))))
                   (pos la))) (vec2 0.0 0.0))))
 
-(defun process-dom-hover (env dom x y)
+(defun process-dom-hover (dom x y)
   (let ((x (- x (/ (x *screen-size*) 2.0)))
         (y (- (- y (/ (y *screen-size*) 2.0)))))
-    
-    ))
+    (walk-expr dom
+               (lambda (d parent-pos)
+                 (assert (layout-annot d))
+                 (let* ((la (layout-annot d))
+                        (dx (+ (x parent-pos) (x (pos la))))
+                        (dy (+ (y parent-pos) (y (pos la))))
+                        (dw (x (size la)))
+                        (dh (y (size la))))
+                   (if (and (>= x dx) (<= x (+ dw dx))
+                            (>= y dy) (<= y (+ dh dy)))
+                       (set-internal-dnsv (hover (state d)) t)
+                       (set-internal-dnsv (hover (state d)) nil)
+                       )
+                   (pos la))) (vec2 0.0 0.0))))
 
 (defun oninput (e)
   (cond
@@ -131,13 +147,15 @@
      (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
             (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
        (process-on-click *env* *root-concrete* x y)
+       (sync-bindings *env* *root-concrete*)
        ;; TODO check if we need to update, rather than doing it regardless
        ;; ALso, try subtree updates
        (update-root-concrete)))
     ((eq :mousemotion (sdl2:get-event-type e))
      (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
             (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
-       (process-dom-hover *env* *root-concrete* x y)
+       (process-dom-hover *root-concrete* x y)
+       (sync-bindings *env* *root-concrete*)
        ;; TODO check if we need to update, rather than doing it regardless
        ;; ALso, try subtree updates
        (update-root-concrete)))

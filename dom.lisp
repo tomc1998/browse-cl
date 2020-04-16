@@ -5,6 +5,34 @@
    span, etc"
   '(member col row empty))
 
+(defclass dom-node-state-value ()
+  ((val :initarg :val :accessor val)
+   (needs-push :initform nil :accessor needs-push :type boolean
+               :documentation 
+               "Set when this value changes in such a way that
+                it needs to be pushed out to whatever state has
+                bound to it. This is useful in the case of 2 way
+                bindings, where internal DOM changes need to be
+                'pushed' out to global state, but global state
+                changes need to be 'pulled' into the DOM. This
+                being true indicates the DOM value should be
+                pushed out to the global state, rather than the
+                other way around
+
+                This should be set to false after pushing out.")))
+
+(defmethod set-internal-dnsv ((d dom-node-state-value) value)
+  "Set some dom-node-state-value, updating the needs-push flag to true.
+   Setting with this method, rather than a typical setf, will ensure this
+   value is pushed out to any bound global vars."
+  (setf (val d) value)
+  (setf (needs-push d) t))
+
+(defclass dom-node-state ()
+  ((hover :initform (make-instance 'dom-node-state-value :val nil) 
+          :accessor hover :type dom-node-state-value
+          :documentation "True when this DOM node is hovered")))
+
 (defclass attr ()
   ((name :initarg :name :accessor name :type string)
    (val :initarg :val :accessor val :type expr))
@@ -126,6 +154,11 @@
 (defclass concrete-dom-node (dom-node) 
   ((attrs :initarg :attrs :accessor attrs :type list
           :documentation "List of const-attr")
+   (state :initform (make-instance 'dom-node-state) 
+          :accessor state :type dom-node-state
+          :documentation "The internal state of this DOM node. This can be
+                          bound with the bind-* attribs, which will keep in
+                          sync some place & this state.")
    (layout-annot :initform nil :accessor layout-annot 
                  :type (or layout-annot null)
                  :documentation "This is set when layed out - see layout.lisp.")
@@ -136,6 +169,24 @@
                                  DOM node.")) 
  (:documentation "This class is a node, many of which makes up a concrete DOM
                    which can be rendered.")) 
+
+(defmethod sync-bindings ((env env) (d concrete-dom-node))
+  "Walk the given tree & sync all 2 way bindings to the global state"
+  (walk-expr 
+    d (lambda (x val)
+        (declare (ignore val))
+        (when (typep x 'concrete-dom-node)
+          ;; Find bind attrs
+          (let ((attr (find-attr x "BIND-STATE-HOVER")))
+            (when attr
+              (let ((dnsv (hover (state x))))
+                (if (needs-push dnsv)
+                    (progn
+                      (set-in-place env 
+                                  (eval-expr-place env (val attr))
+                                  (val dnsv))
+                      (setf (needs-push dnsv) nil))
+                    (setf (val dnsv) (eval-expr env (val attr)))))))))))
 
 (defclass simple-concrete-dom-node (concrete-dom-node)
   ((tag :initarg :tag :accessor tag :type concrete-tag)
@@ -190,7 +241,14 @@
   (let ((ret (list (make-instance
                      'simple-concrete-dom-node
                      :tag (tag n) 
-                     :attrs (loop for a in (attrs n) collect 
+                     :attrs (loop for a in (attrs n) 
+                                  if (and (>= (length (name a)) 11) 
+                                          (string= "BIND-STATE-" (subseq (name a) 0 11))) collect
+                                  (make-instance 
+                                    'attr 
+                                    :name (name a)
+                                    :val (val a))
+                                  else collect 
                                   (make-instance 
                                     'const-attr 
                                     :name (name a)
