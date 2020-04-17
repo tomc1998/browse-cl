@@ -55,21 +55,21 @@
          (bl (vec2 (x tl) (y br))))
    ;; Top left tri
    (push-back-ac (vector pos bl col) (buf p))
-   (push-back-ac (vector (vec3 (+ (x pos) (x size)) 
-                               (+ (y pos) (y size))  
-                               (z pos)) tr col) (buf p))
    (push-back-ac (vector (vec3 (x pos)
                                (+ (y pos) (y size))
                                (z pos)) tl col) (buf p))
+   (push-back-ac (vector (vec3 (+ (x pos) (x size)) 
+                               (+ (y pos) (y size))  
+                               (z pos)) tr col) (buf p))
 
    ;; Lower right tri
    (push-back-ac (vector pos bl col) (buf p))
    (push-back-ac (vector (vec3 (+ (x pos) (x size)) 
-                               (y pos) 
-                               (z pos)) br col) (buf p))
-   (push-back-ac (vector (vec3 (+ (x pos) (x size)) 
                                (+ (y pos) (y size))  
-                               (z pos)) tr col) (buf p))))
+                               (z pos)) tr col) (buf p))
+   (push-back-ac (vector (vec3 (+ (x pos) (x size)) 
+                               (y pos) 
+                               (z pos)) br col) (buf p))))
 
 (defmethod fill-rect ((p painter) pos size &optional (col (vec4 1.0 1.0 1.0 1.0)))
   "Fill a rectangle with top left at pos, with the given size and color."

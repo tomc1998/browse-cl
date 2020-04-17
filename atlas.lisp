@@ -65,8 +65,8 @@
          (uvh (/ (- (float h) 1) (float (height a)))))
     (blit-c-array (cpu-tex a) img-data x y)
     (make-instance 'tex-rect 
-                   :top-left (vec2 uvx uvy) 
-                   :bottom-right (vec2 (+ uvx uvw) (+ uvy uvh)) 
+                   :top-left (vec2 uvx (+ uvy uvh))
+                   :bottom-right (vec2 (+ uvx uvw) uvy)
                    :width w :height h)))
 
 (defmethod load-tex ((a atlas) filename)

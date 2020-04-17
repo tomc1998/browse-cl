@@ -35,7 +35,7 @@
   (let ((res (make-instance 'constraint 
                             :min-val (max (min-val c0) (min-val c1))
                             :max-val (min (max-val c0) (max-val c1)))))
-    (when (< (max-val res) (min-val res))
+    (when (< (max-val res) (min-val res)) 
       (error 'constraint-intersection-error :c0 c0 :c1 c1))
     res))
 
@@ -191,6 +191,18 @@
                          :size (vec2 (float (max (min-val wcons) (nth 0 text-size)))
                                      (float (max (min-val hcons) (nth 1 text-size))))))))
 
+(defmethod layout-overflow ((n simple-concrete-dom-node) wcons hcons)
+  (assert (= 1 (length (children n))))
+  (let ((ox (find-attr n "X"))
+        (oy (find-attr n "Y")))
+    (layout (first (children n)) 0.0 0.0 
+            (if (and ox (eq t (val (val ox)))) (constraint) (constraint 0 (max-val wcons))) 
+            (if (and oy (eq t (val (val oy)))) (constraint) (constraint 0 (max-val hcons)))))
+  (setf (layout-annot n) 
+        (make-instance 'layout-annot
+                       :size (vec2 (float (min-val wcons)) 
+                                   (float (min-val hcons))))))
+
 (defmethod layout 
   ((n concrete-dom-node) 
    &optional 
@@ -213,6 +225,8 @@
          )
         ((and (typep n 'simple-concrete-dom-node) (member (tag n) '(col row)))
          (layout-flex n wcons hcons))
+        ((and (typep n 'simple-concrete-dom-node) (member (tag n) '(overflow)))
+         (layout-overflow n wcons hcons))
         ((and (typep n 'simple-concrete-dom-node) (eq (tag n) 'empty))
          (setf (layout-annot n) 
                (make-instance 'layout-annot :size (vec2 (min-val wcons) 

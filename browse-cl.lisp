@@ -1,8 +1,17 @@
 (in-package #:browse-cl)
 
+(defun make-ortho (le to ri bo ne fa)
+  (make-array '(16) 
+              :initial-contents 
+              (list 
+                (/ 2.0 (- ri le))           0.0                         0.0                         0.0
+                0.0                         (/ 2.0 (- to bo))           0.0                         0.0
+                0.0                         0.0                         (/ -2.0 (- fa ne))          0.0 
+                (- (/ (+ ri le) (- ri le))) (- (/ (+ to bo) (- to bo))) (- (/ (+ fa ne) (- fa ne))) 1.0)
+              :element-type 'single-float))
+
 (defparameter *screen-size* (vec2 800.0 600.0))
-(defparameter *proj-mat* (rtg-math.projection:orthographic-v2 
-                           (vec2 800.0 600.0) -1000.0 1000.0))
+(defparameter *proj-mat* (make-ortho 0.0 0.0 800.0 600.0 -1000.0 1000.0))
 (defparameter *blend-params* (make-blending-params))
 
 (defparameter *painter* nil)
@@ -40,8 +49,7 @@
   (setf (cepl:resolution (cepl:current-viewport)) 
         (vec2 (float w) (float h)))
   (setf *screen-size* (vec2 (float w) (float h)))
-  (setf *proj-mat* (rtg-math.projection:orthographic-v2 
-                           (vec2 (float w) (float h)) -1000.0 1000.0)))
+  (setf *proj-mat* (make-ortho 0.0 0.0 (float w) (float h) -1000.0 1000.0)))
 
 (defun update-root-concrete (&key (force nil))
   "Update the root
@@ -88,7 +96,7 @@
   (clear-dirty-globals *env*)
   (layout *root-concrete*)
   (clear-painter *painter*)
-  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
+  (render-dom *painter* *root-concrete* -100.0 -100.0 :is-debug t)
   (flush *painter*))
 
 (defun unload-all-cache-textures ()
@@ -185,16 +193,12 @@
   ;; Setup test DOM
   (multiple-value-bind (tree env) 
     (compile-browser-program
-      '((var my-font-size int 48)
-        (var button-hovered bool f)
-        (row 
-          (empty :w (if button-hovered 120 100) 
-                 :h (if button-hovered 120 100)
-                 :bind-state-hover button-hovered
-                 :on-click (fn (e mouse-event) void (set my-font-size (- my-font-size 1)))) 
-          (col :max-h 400 
-               (text :max-w 48 :max-h 48 "Hello " "World") 
-               (text :font-col #xffffffff :bg-col #xff0000ff :font-size my-font-size "My name is tom")))))
+      '((overflow :y t :clip t :w 60 :h 50
+          (col 
+            (text "Hello")
+            (empty :min-w 50 :h 100)
+            (text "World")
+            (empty :min-w 50 :h 100)))))
     (setf *root* tree)
     (setf *env* env))
   (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x)))
@@ -204,7 +208,7 @@
   (step-host) ;; Poll events
   (update-repl-link)
   (clear-painter *painter*)
-  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug nil)
+  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
   (flush *painter*)
   (render-main)
   (swap))

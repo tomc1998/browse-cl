@@ -26,6 +26,7 @@
   (set-in-scope s "ROW" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
   (set-in-scope s "TEXT" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
   (set-in-scope s "EMPTY" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
+  (set-in-scope s "OVERFLOW" (make-instance 'constant :val nil :ty *ty-concrete-dom*))
   s)
 
 (defmethod create-builtin-scope ((parent scope))
