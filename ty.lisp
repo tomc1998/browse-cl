@@ -15,8 +15,7 @@
 (defclass ty-inline-method ()
   ((name :initarg :name :accessor name :type string)
    (params :initarg :params :accessor params :type list
-           :documentation "List of param"
-           )
+           :documentation "List of param")
    (ret-ty :initarg :ret-ty :accessor ret-ty :type ty)
    ;; A function which takes params of the types given above (with the first
    ;; param being the 'this' argument, then the rest of the params taking the

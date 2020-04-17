@@ -194,7 +194,7 @@
                  :on-click (fn (e mouse-event) void (set my-font-size (- my-font-size 1)))) 
           (col :max-h 400 
                (text :max-w 48 :max-h 48 "Hello " "World") 
-               (text :font-size my-font-size "My name is tom")))))
+               (text :bg-col #xff0000ff :font-size my-font-size "My name is tom")))))
     (setf *root* tree)
     (setf *env* env))
   (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x)))
@@ -204,7 +204,7 @@
   (step-host) ;; Poll events
   (update-repl-link)
   (clear-painter *painter*)
-  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
+  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug nil)
   (flush *painter*)
   (render-main)
   (swap))

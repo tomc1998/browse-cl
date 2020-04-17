@@ -13,6 +13,17 @@
 
 (defgeneric render-dom (p n x y &key depth is-debug))
 
+(defmethod render-dom-background ((p painter) (n concrete-dom-node) x y &key (depth 0))
+  (let ((attr (find-attr n "BG-COL")))
+    (when attr
+      (if (typep (val (val attr)) 'integer)
+          (let* ((val (val (val attr))) 
+                 (col (vec4 (/ (float (logand #xff (ash val -24))) 255.0)
+                            (/ (float (logand #xff (ash val -16))) 255.0)
+                            (/ (float (logand #xff (ash val  -8)))  255.0)
+                            (/ (float (logand #xff (ash val  -0)))  255.0))))
+            (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) col))))))
+
 (defmethod render-dom ((p painter) (n simple-concrete-dom-node) x y &key (depth 0) (is-debug nil))
   "is-debug - when true, renders coloured boxes around all nodes"
   (assert (layout-annot n))
@@ -21,6 +32,7 @@
         (debug-col (vec4 (* depth 0.2) (* depth 0.2) (* depth 0.2) 1.0)))
     (when is-debug
       (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) debug-col))
+    (render-dom-background p n x y :depth depth)
     (loop for c in (children n) do (render-dom p c x y :depth (+ 1 depth) :is-debug is-debug))))
 
 (defmethod render-dom ((p painter) (n concrete-text-node) x y &key (depth 0) (is-debug nil))
@@ -34,6 +46,7 @@
     (when is-debug
       (fill-rect p (vec3 x y (float depth)) 
                  (size (layout-annot n)) debug-col))
+    (render-dom-background p n x y :depth depth)
     (when (not tra)
       ;; Render text, store in cached-tex-name
       (setf (render-annot n) 
