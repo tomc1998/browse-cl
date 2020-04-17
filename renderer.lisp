@@ -13,15 +13,27 @@
 
 (defgeneric render-dom (p n x y &key depth is-debug))
 
+(defun int-to-col (val)
+  "Return a vec4 containing the color, from a single #xffffffff int."
+  (vec4 (/ (float (logand #xff (ash val -24))) 255.0)
+        (/ (float (logand #xff (ash val -16))) 255.0)
+        (/ (float (logand #xff (ash val  -8)))  255.0)
+        (/ (float (logand #xff (ash val  -0)))  255.0)))
+
+(defmethod get-font-col ((n concrete-text-node))
+  "Return a vec4 col"
+  (let ((attr (find-attr n "FONT-COL")))
+    (if attr
+        (cond ((integerp (val (val attr))) (int-to-col (val (val attr))))
+              (t (error "Unknown font col val ~S" (val (val attr)))))
+        (vec4 0.0 0.0 0.0 1.0) ;; Black text by default
+        )))
+
 (defmethod render-dom-background ((p painter) (n concrete-dom-node) x y &key (depth 0))
   (let ((attr (find-attr n "BG-COL")))
     (when attr
       (if (typep (val (val attr)) 'integer)
-          (let* ((val (val (val attr))) 
-                 (col (vec4 (/ (float (logand #xff (ash val -24))) 255.0)
-                            (/ (float (logand #xff (ash val -16))) 255.0)
-                            (/ (float (logand #xff (ash val  -8)))  255.0)
-                            (/ (float (logand #xff (ash val  -0)))  255.0))))
+          (let ((col (int-to-col (val (val attr)))))
             (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) col))))))
 
 (defmethod render-dom ((p painter) (n simple-concrete-dom-node) x y &key (depth 0) (is-debug nil))
@@ -60,7 +72,8 @@
                 (val n)
                 (floor (x (size (layout-annot n))))
                 255 255 255)))
-      (flush (atlas-manager p)))
-    (fill-tex p (cached-tex-name (render-annot n))
-              (vec3 x y (+ 1.0 (float depth))))
-    ))
+            (flush (atlas-manager p)))
+    (let ((font-col (get-font-col n))) 
+      (fill-tex p (cached-tex-name (render-annot n))
+                (vec3 x y (+ 1.0 (float depth)))
+                :col font-col))))

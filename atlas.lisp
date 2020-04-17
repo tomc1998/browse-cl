@@ -14,6 +14,7 @@
 
 (defmethod flush ((a atlas))
   "Flush the atlas's buffered CPU data to the GPU."
+  (print "Flushing atlas")
   (cepl:copy-c-array-to-texture-backed-gpu-array (cpu-tex a) (texref (tex a))))
 
 (defclass tex-rect ()

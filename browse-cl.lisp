@@ -177,7 +177,7 @@
 
 (defun init ()
   (setf (clear-color cepl.context::*primary-context*) 
-        (vec4 0.1 0.1 0.3 1.0))
+        (vec4 0.99 0.99 0.99 1.0))
   (cepl.sdl2-ttf:init-cepl-sdl2-ttf)
   (setf *atlas-manager* (make-atlas-manager))
   (setf *painter* (make-painter *atlas-manager*))
@@ -194,7 +194,7 @@
                  :on-click (fn (e mouse-event) void (set my-font-size (- my-font-size 1)))) 
           (col :max-h 400 
                (text :max-w 48 :max-h 48 "Hello " "World") 
-               (text :bg-col #xff0000ff :font-size my-font-size "My name is tom")))))
+               (text :font-col #xffffffff :bg-col #xff0000ff :font-size my-font-size "My name is tom")))))
     (setf *root* tree)
     (setf *env* env))
   (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x)))
