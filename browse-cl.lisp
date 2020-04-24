@@ -96,7 +96,7 @@
   (clear-dirty-globals *env*)
   (layout *root-concrete*)
   (clear-painter *painter*)
-  (render-dom *painter* *root-concrete* -100.0 -100.0 :is-debug t)
+  (render-dom *painter* *root-concrete* -100.0 -100.0 :is-debug nil)
   (flush *painter*))
 
 (defun unload-all-cache-textures ()
@@ -178,23 +178,33 @@
 
 (register-event-listener (lambda (e) (oninput e)))
 
+(defmethod flush-and-render ((p painter))
+  "Render the current painter state & clear the painter"
+  (flush p)
+  (with-blending *blend-params* (render-painter p #'prog-1))
+  (clear-painter p))
+
 (defun render-main ()
-  (clear)
-  (with-blending *blend-params*
-    (render-painter *painter* #'prog-1)))
+  (flush-and-render *painter*))
 
 (defun init ()
   (setf (clear-color cepl.context::*primary-context*) 
         (vec4 0.99 0.99 0.99 1.0))
   (cepl.sdl2-ttf:init-cepl-sdl2-ttf)
+  (gl:enable :stencil-test)
+  (gl:stencil-mask #xff)
+  (gl:stencil-op :keep :keep :keep)
+  (gl:stencil-func :equal #xff #xff)
+  (gl:depth-func :lequal)
+  
   (setf *atlas-manager* (make-atlas-manager))
   (setf *painter* (make-painter *atlas-manager*))
 
   ;; Setup test DOM
   (multiple-value-bind (tree env) 
     (compile-browser-program
-      '((overflow :y t :clip t :w 60 :h 50
-          (col 
+      '((overflow :y t :clip t :w 80 :h 140
+          (col
             (text "Hello")
             (empty :min-w 50 :h 100)
             (text "World")
@@ -207,9 +217,8 @@
 (defun update ()
   (step-host) ;; Poll events
   (update-repl-link)
-  (clear-painter *painter*)
-  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug t)
-  (flush *painter*)
+  (clear)
+  (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug nil)
   (render-main)
   (swap))
 
@@ -222,3 +231,9 @@
             (update))))
   (defun stop-main ()
     (setf running nil)))
+
+(defun open-window ()
+  ;; HACK: Set stencil size to 8 here, cepl.sdl2 is broken
+  (print (sdl2::sdl-init sdl2-ffi::+sdl-init-everything+))
+  (sdl2:gl-set-attr :stencil-size 8)
+  (cepl:repl))

@@ -29,12 +29,38 @@
         (vec4 0.0 0.0 0.0 1.0) ;; Black text by default
         )))
 
+(defun print-stencil-bits ()
+  (with-fbo-bound ((draw-fbo-bound (cepl-context)) :target :draw-framebuffer)
+   (cffi:with-foreign-object (bits :int 1)
+          (%gl:get-framebuffer-attachment-parameter-iv 
+            :draw-framebuffer :stencil 
+            :framebuffer-attachment-stencil-size bits)
+          (print (cffi:mem-aref bits :int 0)))))
+
 (defmethod render-dom-background ((p painter) (n concrete-dom-node) x y &key (depth 0))
-  (let ((attr (find-attr n "BG-COL")))
-    (when attr
-      (if (typep (val (val attr)) 'integer)
-          (let ((col (int-to-col (val (val attr)))))
-            (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) col))))))
+  "Will flush p & write into the stencil buffer if :clip t (regardless of
+   whether bg is transparent). Returns t if written to stencil buffer, nil
+  otherwise."
+  (let* ((bg-col-attr (find-attr n "BG-COL"))
+        (bg-col (when (and bg-col-attr (typep (val (val bg-col-attr)) 'integer))
+                  (int-to-col (val (val bg-col-attr)))))
+        (clip-attr (find-attr n "CLIP"))
+        (clip (when clip-attr (eq t (val (val clip-attr))))))
+    (when (or clip bg-col) 
+      (when clip ;; Setup stencil
+        ;;(print-stencil-bits)
+        (flush-and-render p)
+        (%gl:clear (cffi:foreign-bitfield-value '%gl::ClearBufferMask :stencil-buffer))
+        (gl:stencil-func :always #xff #xff)
+        (gl:stencil-op :replace :replace :replace)
+        (when (not bg-col) (%gl:color-mask 0 0 0 0))) ;; Disable colour buffer if no bg col
+      (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) (if bg-col bg-col (vec4 0.0 0.0 0.0 0.0)))
+      (when clip ;; Reset stencil
+        (flush-and-render p)
+        (gl:stencil-op :keep :keep :keep)
+        (gl:stencil-func :equal #xff #xff)
+        (when (not bg-col) (%gl:color-mask 1 1 1 1))))
+    (if clip t nil)))
 
 (defmethod render-dom ((p painter) (n simple-concrete-dom-node) x y &key (depth 0) (is-debug nil))
   "is-debug - when true, renders coloured boxes around all nodes"
