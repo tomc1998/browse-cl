@@ -126,10 +126,17 @@
                        (dy (+ (y parent-pos) (y (pos la))))
                        (dw (x (size la)))
                        (dh (y (size la))))
-                  (when (and (>= x dx) (<= x (+ dw dx))
+                  (if (and (>= x dx) (<= x (+ dw dx))
                              (>= y dy) (<= y (+ dh dy)))
-                    (let ((on-click-fn (find-attr d "ON-CLICK")))
-                      (when on-click-fn  (funcall (val (val on-click-fn)) env nil))))
+                      (progn (let ((on-click-fn (find-attr d "ON-CLICK")))
+                               (when on-click-fn  (funcall (val (val on-click-fn)) env nil)))
+                             ;; Kinda messy... we really want an 'input supertype' here,
+                             ;; but for now we only care about text input
+                             (when (and (typep d 'simple-concrete-dom-node) (eq 'text-input (tag d)))
+                               (set-internal-dnsv (focused (state d)) t)))
+                      ;; Unfocus text input if not clicked on
+                      (when (and (typep d 'simple-concrete-dom-node) (eq 'text-input (tag d)))
+                               (set-internal-dnsv (focused (state d)) nil)))
                   (pos la))) (vec2 0.0 0.0))))
 
 (defun process-dom-hover (dom)
@@ -145,8 +152,7 @@
                    (if (and (>= x dx) (<= x (+ dw dx))
                             (>= y dy) (<= y (+ dh dy)))
                        (set-internal-dnsv (hover (state d)) t)
-                       (set-internal-dnsv (hover (state d)) nil)
-                       )
+                       (set-internal-dnsv (hover (state d)) nil))
                    (pos la))) (vec2 0.0 0.0))))
 
 (defun process-dom-scroll (dom x-scroll y-scroll)
@@ -240,11 +246,13 @@
   ;; Setup test DOM
   (multiple-value-bind (tree env) 
     (compile-browser-program
-      '((overflow :y t :clip t :w 80 :h 140
-          (col
-            (text "Hello")
-            (empty :min-w 50 :h 100)
-            (text "World")))))
+      '((var my-text string "Hello")
+        (var focused bool f)
+        (col
+          (text-input :bg-col (if focused #xeeeeeeee #xaaaaaaaa) 
+                      :bind-state-focused focused 
+                      :bind-state-value my-text)
+          (text my-text))))
     (setf *root* tree)
     (setf *env* env))
   (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x)))

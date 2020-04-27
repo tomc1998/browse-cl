@@ -3,7 +3,7 @@
 (deftype concrete-tag () 
   "Concrete DOM nodes - for HTML, this list would contain div, ul, ol, li,
    span, etc"
-  '(member col row empty))
+  '(member col row text-input empty))
 
 (defclass dom-node-state-value ()
   ((val :initarg :val :accessor val)
@@ -34,7 +34,10 @@
           :documentation "True when this DOM node is hovered")
    (scroll-y :initform (make-instance 'dom-node-state-value :val 0.0)
              :accessor scroll-y :type dom-node-state-value
-             :documentation "Offsets children by the given y value")))
+             :documentation "Offsets children by the given y value")
+   (focused :initform (make-instance 'dom-node-state-value :val nil)
+             :accessor focused :type dom-node-state-value
+             :documentation "Only applicable for text-input")))
 
 (defclass attr ()
   ((name :initarg :name :accessor name :type string)
@@ -180,6 +183,7 @@
         (declare (ignore val))
         (when (typep x 'concrete-dom-node)
           ;; Find bind attrs
+          ;; TODO loop over all bind-state attrs, rather than hardcoding all here
           (let ((attr (find-attr x "BIND-STATE-HOVER")))
             (when attr
               (let ((dnsv (hover (state x))))
@@ -189,7 +193,18 @@
                                   (eval-expr-place env (val attr))
                                   (val dnsv))
                       (setf (needs-push dnsv) nil))
-                    (setf (val dnsv) (eval-expr env (val attr)))))))))))
+                    (setf (val dnsv) (eval-expr env (val attr)))))))
+         (let ((attr (find-attr x "BIND-STATE-FOCUSED")))
+            (when attr
+              (let ((dnsv (focused (state x))))
+                (if (needs-push dnsv)
+                    (progn
+                      (set-in-place env 
+                                  (eval-expr-place env (val attr))
+                                  (val dnsv))
+                      (setf (needs-push dnsv) nil))
+                    (setf (val dnsv) (eval-expr env (val attr))))))) 
+          ))))
 
 (defclass simple-concrete-dom-node (concrete-dom-node)
   ((tag :initarg :tag :accessor tag :type concrete-tag)

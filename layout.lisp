@@ -225,6 +225,12 @@
          )
         ((and (typep n 'simple-concrete-dom-node) (member (tag n) '(col row)))
          (layout-flex n wcons hcons))
+        ((and (typep n 'simple-concrete-dom-node) (eq (tag n) 'text-input))
+         (setf (layout-annot n) 
+               (make-instance 
+                 'layout-annot :size 
+                 (vec2 (min (max-val wcons) (max 80.0 (min-val wcons))) 
+                       (min (max-val hcons) (max 20.0 (min-val hcons)))))))
         ((and (typep n 'simple-concrete-dom-node) (member (tag n) '(overflow)))
          (layout-overflow n wcons hcons))
         ((and (typep n 'simple-concrete-dom-node) (eq (tag n) 'empty))
