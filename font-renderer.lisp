@@ -16,7 +16,7 @@
                   (setf curr-line w))
                 (setf curr-line new-line))))
     (when (> (length curr-line) 0) (push curr-line lines))
-    (reverse lines)))
+    (remove-if (lambda (x) (= (length x) 0)) (reverse lines))))
 
 (defmethod render-wrapped-text-to-atlas-manager
   ((a atlas-manager) font-name size text width &optional (r 255) (g 255) (b 255))

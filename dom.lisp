@@ -28,8 +28,19 @@
   (setf (val d) value)
   (setf (needs-push d) t))
 
+(defparameter *curr-persist-id* 0)
+(defun gen-persist-id () 
+  "Generate a new persistent ID"
+  (- (incf *curr-persist-id*) 1))
+
 (defclass dom-node-state ()
-  ((hover :initform (make-instance 'dom-node-state-value :val nil) 
+  ((persist-id :initform (gen-persist-id) :accessor persist-id :type integer
+               :documentation 
+               "An ID which can be used to track nodes through DOM updates -
+                assuming the persistence is not lost. State persists when the
+                previous and following dom expansions both expand to a single
+                node.")
+   (hover :initform (make-instance 'dom-node-state-value :val nil) 
           :accessor hover :type dom-node-state-value
           :documentation "True when this DOM node is hovered")
    (scroll-y :initform (make-instance 'dom-node-state-value :val 0.0)
@@ -37,7 +48,10 @@
              :documentation "Offsets children by the given y value")
    (focused :initform (make-instance 'dom-node-state-value :val nil)
              :accessor focused :type dom-node-state-value
-             :documentation "Only applicable for text-input")))
+             :documentation "Only applicable for text-input")
+   (text :initform (make-instance 'dom-node-state-value :val "")
+         :accessor text :type dom-node-state-value
+         :documentation "Only applicable for text-input")))
 
 (defclass attr ()
   ((name :initarg :name :accessor name :type string)
@@ -176,6 +190,16 @@
  (:documentation "This class is a node, many of which makes up a concrete DOM
                    which can be rendered.")) 
 
+(defmethod find-with-persist-id ((root concrete-dom-node) id)
+  "Given a persist-id, find the node that matches, or nil if not available (it
+   probably failed to persist through an update)"
+  (let ((ret nil)) 
+    (walk-expr root 
+               (lambda (n val) 
+                 (declare (ignore val)) 
+                 (when (= id (persist-id (state n))) (setf ret n))))
+    ret))
+
 (defmethod sync-bindings ((env env) (d concrete-dom-node))
   "Walk the given tree & sync all 2 way bindings to the global state"
   (walk-expr 
@@ -204,7 +228,16 @@
                                   (val dnsv))
                       (setf (needs-push dnsv) nil))
                     (setf (val dnsv) (eval-expr env (val attr))))))) 
-          ))))
+         (let ((attr (find-attr x "BIND-STATE-TEXT")))
+           (when attr
+             (let ((dnsv (text (state x))))
+               (if (needs-push dnsv)
+                   (progn
+                     (set-in-place env 
+                                   (eval-expr-place env (val attr))
+                                   (val dnsv))
+                     (setf (needs-push dnsv) nil))
+                   (setf (val dnsv) (eval-expr env (val attr)))))))))))
 
 (defclass simple-concrete-dom-node (concrete-dom-node)
   ((tag :initarg :tag :accessor tag :type concrete-tag)
@@ -224,11 +257,11 @@
     (loop for c in (children d) do (walk-expr c fn val))))
 
 
-(defmethod find-font-name-for-text-node ((n concrete-text-node))
+(defmethod find-font-name-for-text-node ((n concrete-dom-node))
   ;; TODO implement
   "IBMPlexSans-Regular.otf")
 
-(defmethod find-font-size-for-text-node ((n concrete-text-node))
+(defmethod find-font-size-for-text-node ((n concrete-dom-node))
   (let ((fs-attr (find-attr n "FONT-SIZE"))) 
     (if fs-attr (val (val fs-attr)) 18)))
 

@@ -71,30 +71,42 @@
               ;; Then, set this child in the parent's children
               (assert parent)
               (assert (typep parent 'simple-concrete-dom-node))
+
               ;; Remove children associated with this template node
-              ;; TODO Unload texture caches
               (let ((to-remove (list))
                     (first-ix nil)) 
                 (loop for ii below (length (children parent))
                       when (member (nth ii (children parent)) 
                                    (related-concrete-nodes x))
                       do (when (not first-ix) (setf first-ix ii)) (push ii to-remove))
-                (setf (children parent) 
-                      (loop for ii from 0 for x in (children parent)
-                            when (not (member ii to-remove)) collect x))
+                (let* ((old-node-state (when (= 1 (length (related-concrete-nodes x)))
+                                         (state (car (related-concrete-nodes x)))))
+                       (new-nodes (expand-template-dom-node *env* x))) 
+                  ;; Special case when num children == 1, preserve the state of
+                  ;; the old node
+                  (when (and (= 1 (length new-nodes)) old-node-state)
+                    (setf (state (nth 0 new-nodes)) old-node-state))
+                  (setf (children parent) 
+                       (loop for ii from 0 for x in (children parent)
+                             if (not (member ii to-remove)) collect x
+                             else do 
+                             ;; Unload textures
+                             (when (and (typep (render-annot x) 'text-render-annot) 
+                                        (cached-tex-name (render-annot x))) 
+                               (unload-tex *atlas-manager* (cached-tex-name (render-annot x))))))
 
-                ;; Add children back
-                (assert first-ix)
-                (if (not (children parent))
-                    (setf (children parent) (expand-template-dom-node *env* x))
-                    (if (= 0 first-ix) 
-                        (setf (children parent) 
-                              (concatenate 'list (expand-template-dom-node *env* x) (children parent)))
-                        (let ((old-cdr (cdr (if (= 0 first-ix) (children parent) 
-                                                (nthcdr (- first-ix 1) (children parent))))))
-                          (setf (cdr (nthcdr (- first-ix 1) (children parent)))
-                                (concatenate 'list (expand-template-dom-node *env* x)
-                                             old-cdr)))))))))
+                 ;; Add children back
+                 (assert first-ix)
+                 (if (not (children parent))
+                     (setf (children parent) new-nodes)
+                     (if (= 0 first-ix) 
+                         (setf (children parent) 
+                               (concatenate 'list new-nodes (children parent)))
+                         (let ((old-cdr (cdr (if (= 0 first-ix) (children parent) 
+                                                 (nthcdr (- first-ix 1) (children parent))))))
+                           (setf (cdr (nthcdr (- first-ix 1) (children parent)))
+                                 (concatenate 'list new-nodes
+                                              old-cdr))))))))))
   (clear-dirty-globals *env*)
   (layout *root-concrete*)
   (clear-painter *painter*)
@@ -111,6 +123,45 @@
                               (cached-tex-name (render-annot d)))
                   (setf (render-annot d) nil)
                   )))))
+
+;; Tracks the current text input
+(defparameter *text-input-buffer* 
+  (make-array 0 
+              :fill-pointer 0 
+              :adjustable t 
+              :initial-contents "" 
+              :element-type 'character))
+(defparameter *curr-focused-elem* nil 
+  "Set to a persist-id of the currently focused node")
+
+(defun set-text-input-buffer (text)
+  (make-array (length text) 
+              :fill-pointer 0 
+              :adjustable t 
+              :initial-contents text
+              :element-type 'character))
+
+(defun focus-elem (e)
+  "Focus the given dom node"
+  (setf *curr-focused-elem* (persist-id (state e)))
+  (set-text-input-buffer (val (text (state e))))
+  (set-internal-dnsv (focused (state e)) t)
+  (sdl2:start-text-input))
+(defun unfocus-elem (e)
+  "Un-focus the given dom node"
+  (when (and *curr-focused-elem*
+             (or
+               (eq (persist-id (state e)) *curr-focused-elem*)
+               (not (find-with-persist-id *root-concrete* *curr-focused-elem*)))) 
+    (setf *curr-focused-elem* nil)
+    (sdl2:stop-text-input))
+  (set-internal-dnsv (focused (state e)) nil))
+(defun update-focused-elem-text ()
+  (when (not *curr-focused-elem*) (return-from update-focused-elem-text))
+  (let ((e (find-with-persist-id *root-concrete* *curr-focused-elem*))) 
+    (when (not e) (setf *curr-focused-elem* nil) (return-from update-focused-elem-text))
+    (when (and (typep e 'simple-concrete-dom-node) (eq 'text-input (tag e)))
+      (set-internal-dnsv (text (state e)) *text-input-buffer*))))
 
 (defun process-on-click (env dom)
   "Call on-click events on dom nodes
@@ -133,10 +184,12 @@
                              ;; Kinda messy... we really want an 'input supertype' here,
                              ;; but for now we only care about text input
                              (when (and (typep d 'simple-concrete-dom-node) (eq 'text-input (tag d)))
-                               (set-internal-dnsv (focused (state d)) t)))
+                               (focus-elem d)))
                       ;; Unfocus text input if not clicked on
-                      (when (and (typep d 'simple-concrete-dom-node) (eq 'text-input (tag d)))
-                               (set-internal-dnsv (focused (state d)) nil)))
+                      (when (and (typep d 'simple-concrete-dom-node) 
+                                 (eq 'text-input (tag d))
+                                 (val (focused (state d))))
+                        (unfocus-elem d)))
                   (pos la))) (vec2 0.0 0.0))))
 
 (defun process-dom-hover (dom)
@@ -210,6 +263,21 @@
             (y (if (eq sdl2-ffi:+sdl-mousewheel-normal+ direction) (- y*) y*)))
        ;; TODO Process scrolling
        (process-dom-scroll *root-concrete* 0 (* 10 y))))
+    ((eq :textinput (sdl2:get-event-type e))
+     (let ((text (plus-c:c-ref e sdl2-ffi:sdl-event :text :text)))
+       (vector-push-extend (code-char text) *text-input-buffer*)
+       (update-focused-elem-text)
+       (sync-bindings *env* *root-concrete*)
+       (update-root-concrete)))
+    ((eq :keydown (sdl2:get-event-type e))
+         (let ((keysym (plus-c:c-ref e sdl2-ffi:sdl-event :key :keysym :sym)))
+           (cond 
+             ((and (eq sdl2-ffi:+sdlk-backspace+ keysym) 
+                   (> (length *text-input-buffer*) 0))
+              (vector-pop *text-input-buffer*)
+              (update-focused-elem-text)
+              (sync-bindings *env* *root-concrete*)
+              (update-root-concrete)))))
     ((eq :windowevent (sdl2:get-event-type e))
      (let ((event (plus-c:c-ref e sdl2-ffi:sdl-event :window :event))
            (d1 (plus-c:c-ref e sdl2-ffi:sdl-event :window :data1))
@@ -251,7 +319,7 @@
         (col
           (text-input :bg-col (if focused #xeeeeeeee #xaaaaaaaa) 
                       :bind-state-focused focused 
-                      :bind-state-value my-text)
+                      :bind-state-text my-text)
           (text my-text))))
     (setf *root* tree)
     (setf *env* env))
