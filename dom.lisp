@@ -31,7 +31,10 @@
 (defclass dom-node-state ()
   ((hover :initform (make-instance 'dom-node-state-value :val nil) 
           :accessor hover :type dom-node-state-value
-          :documentation "True when this DOM node is hovered")))
+          :documentation "True when this DOM node is hovered")
+   (scroll-y :initform (make-instance 'dom-node-state-value :val 0.0)
+             :accessor scroll-y :type dom-node-state-value
+             :documentation "Offsets children by the given y value")))
 
 (defclass attr ()
   ((name :initarg :name :accessor name :type string)

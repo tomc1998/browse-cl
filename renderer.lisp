@@ -71,7 +71,13 @@
     (when is-debug
       (fill-rect p (vec3 x y (float depth)) (size (layout-annot n)) debug-col))
     (render-dom-background p n x y :depth depth)
-    (loop for c in (children n) do (render-dom p c x y :depth (+ 1 depth) :is-debug is-debug))))
+    (loop for c in (children n) do 
+          (render-dom p c x (- y (val (scroll-y (state n)))) 
+                      :depth (+ 1 depth) :is-debug is-debug))
+    ;(loop for c in (children n) do 
+    ;      (render-dom p c x y :depth (+ 1 depth) :is-debug is-debug))
+    
+    ))
 
 (defmethod render-dom ((p painter) (n concrete-text-node) x y &key (depth 0) (is-debug nil))
   "is-debug - when true, renders coloured boxes around all nodes"

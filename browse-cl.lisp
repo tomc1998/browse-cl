@@ -19,6 +19,8 @@
 (defparameter *env* nil)
 (defparameter *root-concrete* nil)
 (defparameter *atlas-manager* nil)
+(defparameter *mouse-x* 0)
+(defparameter *mouse-y* 0)
 
 (defclass render-buf ()
   ((g-buf :initform (error "g-buf required") :initarg :g-buf :accessor g-buf)
@@ -110,13 +112,12 @@
                   (setf (render-annot d) nil)
                   )))))
 
-(defun process-on-click (env dom x y)
+(defun process-on-click (env dom)
   "Call on-click events on dom nodes
 
    dom - a concrete DOM"
   ;; Dumb hack here, we should correct our view mat to make 0,0 the top left
-  (let ((x (- x (/ (x *screen-size*) 2.0)))
-        (y (- (- y (/ (y *screen-size*) 2.0)))))
+  (let ((x *mouse-x*) (y *mouse-y*))
     (walk-expr dom
               (lambda (d parent-pos)
                 (assert (layout-annot d))
@@ -131,9 +132,8 @@
                       (when on-click-fn  (funcall (val (val on-click-fn)) env nil))))
                   (pos la))) (vec2 0.0 0.0))))
 
-(defun process-dom-hover (dom x y)
-  (let ((x (- x (/ (x *screen-size*) 2.0)))
-        (y (- (- y (/ (y *screen-size*) 2.0)))))
+(defun process-dom-hover (dom)
+  (let ((x *mouse-x*) (y *mouse-y*))
     (walk-expr dom
                (lambda (d parent-pos)
                  (assert (layout-annot d))
@@ -149,12 +149,40 @@
                        )
                    (pos la))) (vec2 0.0 0.0))))
 
+(defun process-dom-scroll (dom x-scroll y-scroll)
+  (when (not (= x-scroll 0)) (error "Unimplemented x scrolling"))
+  (let ((x *mouse-x*) (y *mouse-y*))
+    (walk-expr dom
+               (lambda (d parent-pos)
+                 (assert (layout-annot d))
+                 
+                 (let* ((la (layout-annot d))
+                        (dx (+ (x parent-pos) (x (pos la))))
+                        (dy (+ (y parent-pos) (y (pos la))))
+                        (dw (x (size la)))
+                        (dh (y (size la))))
+                   (when (and 
+                           (typep d 'simple-concrete-dom-node)
+                           (eq 'overflow (tag d))
+                           (>= x dx) (<= x (+ dw dx))
+                           (>= y dy) (<= y (+ dh dy)))
+                     ;; Get the height of the child, vs dh, is the max
+                     ;; scrolling we want. Clamp between 0 and (- child-height dh)
+                     (let* ((child-height (y (size (layout-annot (nth 0 (children d))))))
+                            (max-y-scroll (max 0 (- child-height dh)))
+                            (new-scroll-val (+ y-scroll (val (scroll-y (state d)))))
+                            (clamped (max 0 (min max-y-scroll new-scroll-val)))) 
+                      (set-internal-dnsv (scroll-y (state d)) clamped)))
+                   (pos la))) (vec2 0.0 0.0))))
+
 (defun oninput (e)
   (cond
     ((eq :mousebuttonup (sdl2:get-event-type e))
      (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
             (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
-       (process-on-click *env* *root-concrete* x y)
+       (setf *mouse-x* x)
+       (setf *mouse-y* y)
+       (process-on-click *env* *root-concrete*)
        (sync-bindings *env* *root-concrete*)
        ;; TODO check if we need to update, rather than doing it regardless
        ;; ALso, try subtree updates
@@ -162,11 +190,20 @@
     ((eq :mousemotion (sdl2:get-event-type e))
      (let* ((x (plus-c:c-ref e sdl2-ffi:sdl-event :button :x))
             (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
-       (process-dom-hover *root-concrete* x y)
+       (setf *mouse-x* x)
+       (setf *mouse-y* y)
+       (process-dom-hover *root-concrete*)
        (sync-bindings *env* *root-concrete*)
        ;; TODO check if we need to update, rather than doing it regardless
        ;; ALso, try subtree updates
        (update-root-concrete)))
+    ((eq :mousewheel (sdl2:get-event-type e))
+     (let* ((y* (plus-c:c-ref e sdl2-ffi:sdl-event :wheel :y))
+            (direction (plus-c:c-ref e sdl2-ffi:sdl-event :wheel :direction))
+            ;; Calculate ACTUAL scroll direction based on 'flipped' bool
+            (y (if (eq sdl2-ffi:+sdl-mousewheel-normal+ direction) (- y*) y*)))
+       ;; TODO Process scrolling
+       (process-dom-scroll *root-concrete* 0 (* 10 y))))
     ((eq :windowevent (sdl2:get-event-type e))
      (let ((event (plus-c:c-ref e sdl2-ffi:sdl-event :window :event))
            (d1 (plus-c:c-ref e sdl2-ffi:sdl-event :window :data1))
@@ -207,8 +244,7 @@
           (col
             (text "Hello")
             (empty :min-w 50 :h 100)
-            (text "World")
-            (empty :min-w 50 :h 100)))))
+            (text "World")))))
     (setf *root* tree)
     (setf *env* env))
   (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x)))
