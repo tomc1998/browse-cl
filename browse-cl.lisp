@@ -134,18 +134,18 @@
 (defparameter *curr-focused-elem* nil 
   "Set to a persist-id of the currently focused node")
 
-(defun set-text-input-buffer (text)
-  (make-array (length text) 
-              :fill-pointer 0 
+(defun make-str-buf (str)
+  (make-array (length str) 
+              :fill-pointer (length str) 
               :adjustable t 
-              :initial-contents text
+              :initial-contents str
               :element-type 'character))
 
 (defun focus-elem (e)
   "Focus the given dom node"
   (setf *curr-focused-elem* (persist-id (state e)))
-  (set-text-input-buffer (val (text (state e))))
   (set-internal-dnsv (focused (state e)) t)
+  (setf *text-input-buffer* (make-str-buf (val (text (state e)))))
   (sdl2:start-text-input))
 (defun unfocus-elem (e)
   "Un-focus the given dom node"
@@ -184,6 +184,7 @@
                              ;; Kinda messy... we really want an 'input supertype' here,
                              ;; but for now we only care about text input
                              (when (and (typep d 'simple-concrete-dom-node) (eq 'text-input (tag d)))
+                               (sync-bindings *env* d)
                                (focus-elem d)))
                       ;; Unfocus text input if not clicked on
                       (when (and (typep d 'simple-concrete-dom-node) 
