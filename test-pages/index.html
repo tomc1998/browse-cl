@@ -1,7 +1,8 @@
 (defcomp load-bar (value int max-value int w int h int)
+         (const perc (fn () num (/ (num value) (num max-value))))
          (view (col :bg-col #xaaaaaaff :w w :h h
                     (empty :bg-col #xff0000ff :h h :w 
-                           (* (/ (num value) (num max-value)) w)))))
+                           (* (perc) w)))))
 
 (var my-text string "Hello")
 (var focused bool f)

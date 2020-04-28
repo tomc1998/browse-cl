@@ -9,7 +9,7 @@
    (params :initarg :params :accessor params :type 'list)
    ;; List of 'single-data-def
    (data :initarg :data :initform (list) :accessor data :type 'list)
-   ;; Constant stuff - e.g. functions
+   ;; Constant stuff - e.g. functions. List of cst-single-const-def
    (const :initarg :const :initform (list) :accessor const :type 'list)
    ;; The view function
    (view :initarg :view :initform nil :accessor view :type 'view-def)))
@@ -29,16 +29,16 @@
    ;; First arg of fn (if this is a fn) should be the receiver
    (val :initarg :val :accessor val :type 'expr)))
 (defclass cst-const-def (cst-component-def)
-  ;; list of 'single-const-def
+  ;; list of 'cst-single-const-def
   ((items :initarg :items :accessor items :type 'list)))
 
 
 (defun parse-const-component-def (name val)
-  "Given a name & a val, return a single-const-def. This handles fn decls specially."
+  "Given a name & a val, return a cst-single-const-def. This handles fn decls specially."
   (assert (symbolp name))
   (assert (listp val))
   (make-instance 
-    'single-const-def :name (string name) 
+    'cst-single-const-def :name (string name) 
     :val (parse-expr val)))
 
 (defun parse-component-def (form)

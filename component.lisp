@@ -12,6 +12,12 @@
    @param children - a list of 'expr"
   (let ((s (create-global-scope)))
     (loop for a in attrs do (set-in-scope s (name a) (val a)))
+    (loop for p in (remove-if-not #'pos (params c)) 
+          for val in children do 
+          (set-in-scope s (name p) val))
+    ;; Setup constants
+    (loop for const in (const c) do
+          (set-in-scope s (name const) (to-expr s (val const))))
     (loop for child in children for p in (params c) do 
           (set-in-scope s (name p) child))
     (make-instance 'component

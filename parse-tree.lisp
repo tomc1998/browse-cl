@@ -68,7 +68,14 @@
                     :attrs attrs
                     :children children)))))
           ((eq 'fn (kind (get-type target)))
-           (error "Unimplemented function calls"))
+           ;; Call the function
+           (let ((params (params (metadata (get-type target)))))
+             (when (/= 0 (length params)) 
+               (error "Unimplemented function calls with params"))
+             (make-instance 'apply-expr :fn (val target)
+                            :args (list)
+                            :with-env t
+                            :ty (ret (metadata (get-type target))))))
           (t (error "Expected fn / component"))))))
 
 (defclass cst-set-expr (cst-node)

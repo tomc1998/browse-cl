@@ -74,6 +74,9 @@
                        to the given args, and returns a common lisp value.")
    (ty :initarg :ty :accessor ty :type ty
        :documentation "The type of value returned from fn.")
+   (with-env :initarg :with-env :initform nil :accessor with-env :type boolean
+             :documentation "When true, calls fn with the first arg as the env
+                             when evaluated")
    (args :initarg :args :accessor args :type list
          :documentation "List of expr")))
 (defmethod walk-expr ((e apply-expr) fn &optional val)
@@ -82,7 +85,9 @@
 (defmethod find-dependent-env-vals ((e apply-expr))
   (apply (curry #'concatenate 'list) (mapcar #'find-dependent-env-vals (args e))))
 (defmethod eval-expr ((env env) (e apply-expr))
-  (apply (fn e) (mapcar (curry #'eval-expr env) (args e))))
+  (apply 
+    (if (with-env e) (curry (fn e) env) (fn e)) 
+    (mapcar (curry #'eval-expr env) (args e))))
 (defmethod get-type ((e apply-expr)) (ty e))
 
 (defclass arr-constructor (expr)
