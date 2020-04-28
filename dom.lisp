@@ -259,7 +259,8 @@
                                    (eval-expr-place env (val attr))
                                    (val dnsv))
                      (setf (needs-push dnsv) nil))
-                   (setf (val dnsv) (eval-expr env (val attr)))))))))))
+                   (progn
+                     (setf (val dnsv) (eval-expr env (val attr))))))))))))
 
 (defclass simple-concrete-dom-node (concrete-dom-node)
   ((tag :initarg :tag :accessor tag :type concrete-tag)

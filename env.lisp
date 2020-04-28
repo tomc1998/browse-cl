@@ -42,9 +42,12 @@
                               location of the previous stack base"))
   (:documentation "A runtime environment, with stack & global map"))
 
-(defmethod clear-dirty-globals ((e env))
+(defmethod set-dirty-globals ((e env) val)
+  "Set all dirty flags to the given value. Passing nil will have the same
+   effect as clear-dirty-globals."
   (loop for ii below (length (dirty-globals e)) do
-        (setf (aref (dirty-globals e) ii) nil)))
+        (setf (aref (dirty-globals e) ii) val)))
+(defmethod clear-dirty-globals ((e env)) (set-dirty-globals e nil))
 
 (defun (setf env-lookup) (val e id)
   "Set some id in the env to a given value. Updates the dirty array when

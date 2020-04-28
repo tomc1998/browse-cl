@@ -14,6 +14,9 @@
 (defparameter *proj-mat* (make-ortho 0.0 0.0 800.0 600.0 -1000.0 1000.0))
 (defparameter *blend-params* (make-blending-params))
 
+(defparameter *site-origin* "127.0.0.1")
+(defparameter *site-port* "9898")
+
 (defparameter *painter* nil)
 (defparameter *root* nil)
 (defparameter *env* nil)
@@ -53,7 +56,7 @@
   (setf *screen-size* (vec2 (float w) (float h)))
   (setf *proj-mat* (make-ortho 0.0 0.0 (float w) (float h) -1000.0 1000.0)))
 
-(defun update-root-concrete (&key (force nil))
+(defun update-root-concrete (&key (force nil) (with-redraw t))
   "Update the root
 
    force - If true, this will update the whole root, rather than finding
@@ -109,9 +112,10 @@
                                               old-cdr))))))))))
   (clear-dirty-globals *env*)
   (layout *root-concrete*)
-  (clear-painter *painter*)
-  (render-dom *painter* *root-concrete* -100.0 -100.0 :is-debug nil)
-  (flush *painter*))
+  (when with-redraw 
+    (clear-painter *painter*)
+    (render-dom *painter* *root-concrete* -100.0 -100.0 :is-debug nil)
+    (flush *painter*)))
 
 (defun unload-all-cache-textures ()
   "Using the root DOM node, unload all cached textures from the atlas"
@@ -278,7 +282,9 @@
               (vector-pop *text-input-buffer*)
               (update-focused-elem-text)
               (sync-bindings *env* *root-concrete*)
-              (update-root-concrete)))))
+              (update-root-concrete))
+             ;; Reload on f5
+             ((eq sdl2-ffi:+sdlk-f5+ keysym) (reload-page)))))
     ((eq :windowevent (sdl2:get-event-type e))
      (let ((event (plus-c:c-ref e sdl2-ffi:sdl-event :window :event))
            (d1 (plus-c:c-ref e sdl2-ffi:sdl-event :window :data1))
@@ -298,6 +304,25 @@
 
 (defun render-main ()
   (flush-and-render *painter*))
+
+(defun reload-page ()
+  "Reload the page with *site-port* and *site-origin*."
+  (let* ((url (format nil "http://~a:~a/" *site-origin* *site-port*))
+         (input-stream (make-string-input-stream 
+                         (drakma:http-request url)))) 
+    (format t "Reloading ~a~%" url)
+    (multiple-value-bind (tree env) 
+      (compile-browser-program 
+        (loop with res do (setf res (read input-stream nil 'eof))
+              until (eq res 'eof)
+              collect res))
+      (setf *root* tree)
+      (setf *env* env))
+    (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x))) 
+    (update-root-concrete :force t :with-redraw nil)
+    (set-dirty-globals *env* t)
+    (sync-bindings *env* *root-concrete*)
+    (update-root-concrete)))
 
 (defun init ()
   (setf (clear-color cepl.context::*primary-context*) 
@@ -330,7 +355,9 @@
     (setf *root* tree)
     (setf *env* env))
   (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x)))
-  (update-root-concrete :force t))
+  (update-root-concrete :force t)
+  (sync-bindings *env* *root-concrete*)
+  (update-root-concrete))
 
 (defun update ()
   (step-host) ;; Poll events
