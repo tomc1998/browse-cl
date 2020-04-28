@@ -146,6 +146,8 @@
    called by the given list of types (in param-types). param-types is a list
    of 'ty." 
   (assert (eq (kind ty) 'fn))
+  (when (/= (length (params (metadata ty))) (- (length param-types) 1))
+    (return-from can-fn-be-called nil))
   (funcall (curry #'every 
                   (lambda (t-list) (is-subtype s (nth 0 t-list) 
                                               (nth 1 t-list))))

@@ -36,13 +36,13 @@
                  (find-ty-method s (get-type arg0) 
                                  (fn-name c) param-types))))))
     (when (and (not method-target) (not target)) 
-      ;; TODO proper error
-      (error "Can't find ~a" (fn-name c)))
+      (error 'var-not-found :name (fn-name c)))
     (if (and method-target (= 0 (length (key-args c))))
         ;; If this is a valid method call & there are no key args (which aren't
         ;; valid when callind methods... yet), call a method
         (if (typep method-target 'ty-inline-method) 
-            (make-instance 'apply-expr :fn (eval-fn method-target)
+            (make-instance 'apply-expr 
+                           :name (fn-name c) :fn (eval-fn method-target)
                            :ty (ret-ty method-target)
                            :args (mapcar (curry #'to-expr s) (pos-args c)))
             (error "Unimpl method call"))
@@ -72,7 +72,9 @@
            (let ((params (params (metadata (get-type target)))))
              (when (/= 0 (length params)) 
                (error "Unimplemented function calls with params"))
-             (make-instance 'apply-expr :fn (val target)
+             (make-instance 'apply-expr 
+                            :name (fn-name c)
+                            :fn (val target)
                             :args (list)
                             :with-env t
                             :ty (ret (metadata (get-type target))))))
@@ -159,11 +161,13 @@
 
 (defmethod to-expr ((s scope) (c cst-var))
   (let ((res (find-in-scope s (name c))))
-    (assert (typep res 'expr))
+    (assert res () 'var-not-found :name (name c))
+    (assert (typep res 'expr) ())
     res))
 
 (defmethod to-ty ((s scope) (c cst-var))
   (let ((res (find-in-scope s (name c))))
+    (assert res () 'var-not-found :name (name c))
     (assert (typep res 'ty))
     res))
 
@@ -202,6 +206,7 @@
 (defmethod to-expr ((s scope) (c cst-var-decl)) 
   (let ((e (to-expr s (val c)))
         (var (find-in-scope s (name c)))) 
+    (assert var () 'var-not-found :name (name c))
     (assert (typep var 'runtime-value))
     (make-instance 'var-decl :var (id var) 
                  :ty (if (ty c) (to-ty s (ty c)) (get-type e))

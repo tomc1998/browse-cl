@@ -69,7 +69,9 @@
       val-ids)))
 
 (defclass apply-expr (expr)
-  ((fn :initarg :fn :accessor fn
+  ((name :initarg :name :initform "UNKNOWN" :accessor name 
+         :documentation "Optional debug name for fn")
+   (fn :initarg :fn :accessor fn
        :documentation "A function which takes a list of values, corresponding
                        to the given args, and returns a common lisp value.")
    (ty :initarg :ty :accessor ty :type ty
@@ -85,9 +87,9 @@
 (defmethod find-dependent-env-vals ((e apply-expr))
   (apply (curry #'concatenate 'list) (mapcar #'find-dependent-env-vals (args e))))
 (defmethod eval-expr ((env env) (e apply-expr))
-  (apply 
-    (if (with-env e) (curry (fn e) env) (fn e)) 
-    (mapcar (curry #'eval-expr env) (args e))))
+  (let ((fn (if (with-env e) (curry (fn e) env) (fn e)))
+        (args (mapcar (curry #'eval-expr env) (args e)))) 
+    (apply fn args)))
 (defmethod get-type ((e apply-expr)) (ty e))
 
 (defclass arr-constructor (expr)

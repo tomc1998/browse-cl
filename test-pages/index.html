@@ -1,8 +1,14 @@
 (defcomp load-bar (value int max-value int w int h int)
-         (const perc (fn () num (/ (num value) (num max-value))))
-         (view (col :bg-col #xaaaaaaff :w w :h h
-                    (empty :bg-col #xff0000ff :h h :w 
-                           (* (perc) w)))))
+         (const 
+           perc (/ (num value) (num max-value))
+           perc256 (int (* perc 256.0))
+           bar-r perc256
+           bar-g (- perc256)
+           bar-col (logior #xff (ash bar-r 24) (ash bar-g 16)))
+         (view 
+           (col :bg-col #xaaaaaaff :w w :h h
+                (empty :bg-col bar-col :h h :w 
+                       (* perc w)))))
 
 (var my-text string "Hello")
 (var focused bool f)
@@ -11,5 +17,8 @@
   (text-input :bg-col (if focused #xeeeeeeee #xaaaaaaaa) 
               :bind-state-focused focused 
               :bind-state-text my-text)
-  (load-bar (length my-text) 40 80 20)
-  (text my-text))
+  (empty :h 8)
+  (col :bg-col #xeeeeeeff :max-w 160
+    (text my-text)
+    (empty :h 8)
+    (load-bar (length my-text) 40 80 8)))

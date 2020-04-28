@@ -8,6 +8,10 @@
             :documentation "The top-level expr this parse error occurred in"
             )))
 
+(define-condition var-not-found (error)
+  ((name :initarg :name :type string :reader name
+         :documentation "The name of the var")))
+
 (define-condition layout-overflow-error (error)
   ((n :initarg :n :reader n :type concrete-dom-node
       :documentation "The concrete-dom-node that failed to layout")

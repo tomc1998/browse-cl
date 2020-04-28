@@ -45,6 +45,7 @@
       (def-inline-methods 
         (+ (x int) num (+ this x))
         (+ (x num) num (+ this x))
+        (- () num (- this))
         (- (x int) num (- this x))
         (- (x num) num (- this x))
         (* (x int) num (* this x))
@@ -69,6 +70,7 @@
       (def-inline-methods 
         (+  (x int) int  (+  this x))
         (+  (x num) num  (+  this x))
+        (- () int (- this))
         (-  (x int) int  (-  this x))
         (-  (x num) num  (-  this x))
         (*  (x int) int  (*  this x))
@@ -85,6 +87,12 @@
         (<= (x num) bool (<= this x))
         (=  (x int) bool (=  this x))
         (=  (x num) bool (=  this x))
+
+        ;; Logical shift
+        (ash (x int) int (ash this x))
+        (logior (x int) int (logior this x))
+        (logior (x int y int) int (logior this x y))
+        (logior (x int y int z int) int (logior this x y z))
 
         ;; Cast
         (num () num (float this))

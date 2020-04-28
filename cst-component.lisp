@@ -36,7 +36,6 @@
 (defun parse-const-component-def (name val)
   "Given a name & a val, return a cst-single-const-def. This handles fn decls specially."
   (assert (symbolp name))
-  (assert (listp val))
   (make-instance 
     'cst-single-const-def :name (string name) 
     :val (parse-expr val)))
