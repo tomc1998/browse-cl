@@ -44,7 +44,26 @@
 (setf (methods *ty-num*)
       (def-inline-methods 
         (+ (x int) num (+ this x))
-        (+ (x num) num (+ this x))))
+        (+ (x num) num (+ this x))
+        (- (x int) num (- this x))
+        (- (x num) num (- this x))
+        (* (x int) num (* this x))
+        (* (x num) num (* this x))
+        (/ (x int) num (/ this x))
+        (/ (x num) num (/ this x))
+
+        (>  (x int) bool (>  this x))
+        (>  (x num) bool (>  this x))
+        (<  (x int) bool (<  this x))
+        (<  (x num) bool (<  this x))
+        (>= (x int) bool (>= this x))
+        (>= (x num) bool (>= this x))
+        (<= (x int) bool (<= this x))
+        (<= (x num) bool (<= this x))
+        (=  (x int) bool (=  this x))
+        (=  (x num) bool (=  this x))
+
+        (int () int (floor this))))
 
 (setf (methods *ty-int*)
       (def-inline-methods 
@@ -65,7 +84,12 @@
         (<= (x int) bool (<= this x))
         (<= (x num) bool (<= this x))
         (=  (x int) bool (=  this x))
-        (=  (x num) bool (=  this x))))
+        (=  (x num) bool (=  this x))
+
+        ;; Cast
+        (num () num (float this))
+        
+        ))
 
 (setf (methods *ty-bool*)
       (def-inline-methods 

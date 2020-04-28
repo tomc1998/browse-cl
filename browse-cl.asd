@@ -38,6 +38,8 @@
                (:file "top-level-statement")
                (:file "parse-tree")
                (:file "parse")
+               (:file "cst-component")
+               (:file "component")
                (:file "compiler")
 
                ;; Rendering

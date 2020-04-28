@@ -147,8 +147,8 @@
            :msg "Expected symbol as first element in expression"))
   (let ((tagname (string (car form))))
     (cond
-      ((string= "VAR" tagname)
-       (parse-var-decl form))
+      ((string= "VAR" tagname) (parse-var-decl form))
+      ((string= "DEFCOMP" tagname) (parse-defcomp form))
       (t (parse-expr form)))))
 
 (defun parse-program (forms)

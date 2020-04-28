@@ -80,7 +80,7 @@
   (let ((val (funcall fn e val)))
     (loop for a in (args e) do (funcall fn a val))))
 (defmethod find-dependent-env-vals ((e apply-expr))
-  (concatenate 'list (mapcar #'find-dependent-env-vals (args e))))
+  (apply (curry #'concatenate 'list) (mapcar #'find-dependent-env-vals (args e))))
 (defmethod eval-expr ((env env) (e apply-expr))
   (apply (fn e) (mapcar (curry #'eval-expr env) (args e))))
 (defmethod get-type ((e apply-expr)) (ty e))

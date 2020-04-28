@@ -56,9 +56,17 @@
              (cond
                ((string= "TEXT" (fn-name c))
                 (make-instance 'template-text-node :attrs attrs :exprs children))
-               (t 
+               ((not (metadata (get-type target))) 
                 (make-instance 'template-concrete-dom-node 
-                               :tag (intern (fn-name c)) :attrs attrs :children children)))))
+                               :tag (intern (fn-name c)) :attrs attrs :children children))
+               ;; Fat component instantiation (not just a template dom node
+               (t (make-instance 
+                    'template-fat-dom-node
+                    :component 
+                    (expand-component (metadata (get-type target)) 
+                                      attrs children)
+                    :attrs attrs
+                    :children children)))))
           ((eq 'fn (kind (get-type target)))
            (error "Unimplemented function calls"))
           (t (error "Expected fn / component"))))))

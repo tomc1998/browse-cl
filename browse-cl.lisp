@@ -316,10 +316,15 @@
     (compile-browser-program
       '((var my-text string "Hello")
         (var focused bool f)
+        (defcomp load-bar (value int max-value int w int h int)
+                 (view (col :bg-col #xaaaaaaff :w w :h h
+                            (empty :bg-col #xff0000ff :h h :w 
+                                   (* (/ (num value) (num max-value)) w)))))
         (col
           (text-input :bg-col (if focused #xeeeeeeee #xaaaaaaaa) 
                       :bind-state-focused focused 
                       :bind-state-text my-text)
+          (load-bar (length my-text) 40 80 20)
           (text my-text))))
     (setf *root* tree)
     (setf *env* env))

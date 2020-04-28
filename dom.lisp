@@ -115,6 +115,7 @@
                    NOTE: Make sure to call init-dependent-env-vals before this."))
 (defmethod dom-needs-expanding ((env env) (e expr))
   (loop for x in (find-dependent-env-vals e)
+        when (not (realp x)) do (inspect e)
         when (is-dirty env x) return t))
 (defmethod dom-needs-expanding ((e env) (n template-dom-node))
   (loop for x across (dependent-env-vals n) when (is-dirty e x) return t))
@@ -170,6 +171,27 @@
 (defmethod walk-expr ((d template-concrete-dom-node) fn &optional (val nil)) 
   (let ((val (funcall fn d val)))
     (loop for c in (children d) do (walk-expr c fn val))))
+
+(defclass template-fat-dom-node (template-dom-node)
+ ((component :initarg :component :accessor component :type component)
+  (attrs :initarg :attrs :accessor attrs :type list
+         :documentation "List of attr")
+  (children :initarg :children :accessor children :type list :initform (list)
+            :documentation "A list of template-concrete-dom-node children."))
+ (:documentation "A 'fat' dom node, i.e. an instantiation of a component with
+                  user-defined internal state"))
+(defmethod walk-expr ((d template-fat-dom-node) fn &optional (val nil)) 
+  (walk-expr (view (component d)) fn val))
+(defmethod init-dependent-env-vals ((n template-fat-dom-node))
+  (let ((res (make-array '(0) 
+                         :element-type 'var-id 
+                         :fill-pointer 0 :adjustable t))) 
+    (loop for a in (attrs n) do 
+          (loop for x in (find-dependent-env-vals (val a)) do
+                (vector-push-extend x res)))
+    (setf (dependent-env-vals n) res)))
+(defmethod dom-needs-expanding ((e env) (n template-fat-dom-node))
+  (loop for x across (dependent-env-vals n) when (is-dirty e x) return t))
 
 (defclass concrete-dom-node (dom-node) 
   ((attrs :initarg :attrs :accessor attrs :type list
@@ -324,5 +346,9 @@
                                        (format nil "~a" (eval-expr e c))))))))
     (setf (related-concrete-nodes n) ret)
     ret))
+
+(defmethod expand-template-dom-node ((e env) (n template-fat-dom-node))
+  (expand-template-dom-node e (view (component n))))
+
 
 (defmethod expand-template-dom-node ((e env) (n concrete-dom-node)) (list n))
