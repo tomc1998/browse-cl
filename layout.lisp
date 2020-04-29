@@ -203,6 +203,23 @@
                        :size (vec2 (float (min-val wcons)) 
                                    (float (min-val hcons))))))
 
+(defmethod layout-pad ((n simple-concrete-dom-node) wcons hcons)
+  (let* ((le-attr (find-attr n "L"))
+         (ri-attr (find-attr n "R"))
+         (to-attr (find-attr n "T"))
+         (bo-attr (find-attr n "B"))
+         (le (if le-attr (val (val le-attr)) 0))
+         (ri (if ri-attr (val (val ri-attr)) 0))
+         (to (if to-attr (val (val to-attr)) 0))
+         (bo (if bo-attr (val (val bo-attr)) 0))
+         (c (first (children n))))
+    (layout c le to 
+            (constraint 0 (- (max-val wcons) le ri))
+            (constraint 0 (- (max-val hcons) to bo)))
+    (setf (layout-annot n)
+          (make-instance 'layout-annot
+                         :size (vec2 (float (max (+ le ri (x (size (layout-annot c)))) (min-val wcons))) 
+                                     (float (max (+ to bo (y (size (layout-annot c)))) (min-val hcons))))))))
 (defmethod layout 
   ((n concrete-dom-node) 
    &optional 
@@ -221,8 +238,7 @@
           (hcons (intersect hcons internal-hcons))) 
       (cond 
         ((typep n 'concrete-text-node)
-         (layout-text n wcons hcons)
-         )
+         (layout-text n wcons hcons))
         ((and (typep n 'simple-concrete-dom-node) (member (tag n) '(col row)))
          (layout-flex n wcons hcons))
         ((and (typep n 'simple-concrete-dom-node) (eq (tag n) 'text-input))
@@ -231,8 +247,10 @@
                  'layout-annot :size 
                  (vec2 (min (max-val wcons) (max 80.0 (min-val wcons))) 
                        (min (max-val hcons) (max 20.0 (min-val hcons)))))))
-        ((and (typep n 'simple-concrete-dom-node) (member (tag n) '(overflow)))
+        ((and (typep n 'simple-concrete-dom-node) (eq (tag n) 'overflow))
          (layout-overflow n wcons hcons))
+        ((and (typep n 'simple-concrete-dom-node) (eq (tag n) 'pad))
+         (layout-pad n wcons hcons))
         ((and (typep n 'simple-concrete-dom-node) (eq (tag n) 'empty))
          (setf (layout-annot n) 
                (make-instance 'layout-annot :size (vec2 (min-val wcons) 

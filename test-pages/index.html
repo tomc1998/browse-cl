@@ -13,12 +13,11 @@
 (var my-text string "Hello")
 (var focused bool f)
 
-(col
-  (text-input :bg-col (if focused #xeeeeeeee #xaaaaaaaa) 
-              :bind-state-focused focused 
-              :bind-state-text my-text)
-  (empty :h 8)
-  (col :bg-col #xeeeeeeff :max-w 160
-    (text my-text)
-    (empty :h 8)
-    (load-bar (length my-text) 40 80 8)))
+
+(pad :l 8 :r 8 :t 8 :b 8 :bg-col #xeeeeeeff
+     (col :max-w 180
+          (text-input :h 80 :w 180 :bg-col (if focused #xeeeeeeee #xaaaaaaaa) 
+                      :bind-state-focused focused 
+                      :bind-state-text my-text)
+          (empty :w 160 :h 8)
+          (load-bar (length my-text) 40 180 8)))
