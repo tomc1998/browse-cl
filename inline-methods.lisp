@@ -75,6 +75,7 @@
         (-  (x num) num  (-  this x))
         (*  (x int) int  (*  this x))
         (*  (x num) num  (*  this x))
+        (%  (x int) int  (mod this x))
         (/  (x int) int  (floor (/  this x)))
         (/  (x num) num  (/  this x))
         (>  (x int) bool (>  this x))

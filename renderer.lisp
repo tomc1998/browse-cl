@@ -1,43 +1,3 @@
-
-
-
-
-
-
-
-
-;; TODO need clip-depth, & then use incr / decr when rendering into the stencil
-;; buffer
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 (in-package #:browse-cl)
 
 (defclass render-annot () ()
@@ -83,7 +43,6 @@
       (when clip ;; Setup stencil
         ;;(print-stencil-bits)
         (flush-and-render p)
-        ;(%gl:clear (cffi:foreign-bitfield-value '%gl::ClearBufferMask :stencil-buffer))
         (gl:stencil-func :always clip-depth #xff)
         (gl:stencil-op :incr :incr :incr)
         (when (not bg-col) (%gl:color-mask 0 0 0 0))) ;; Disable colour buffer if no bg col
@@ -104,7 +63,6 @@
     (when clip
       ;; Setup stencil
       (flush-and-render p)
-      ;(%gl:clear (cffi:foreign-bitfield-value '%gl::ClearBufferMask :stencil-buffer))
       (gl:stencil-func :always clip-depth #xff)
       (gl:stencil-op :decr :decr :decr)
       (%gl:color-mask 0 0 0 0) ;; Disable colour buffer for this rect

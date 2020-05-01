@@ -171,7 +171,6 @@
   "Call on-click events on dom nodes
 
    dom - a concrete DOM"
-  ;; Dumb hack here, we should correct our view mat to make 0,0 the top left
   (let ((x *mouse-x*) (y *mouse-y*))
     (walk-expr dom
               (lambda (d parent-pos)

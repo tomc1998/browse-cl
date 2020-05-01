@@ -45,6 +45,14 @@
                  :target (parse-expr (nth 1 form)) 
                  :val (parse-expr (nth 2 form))))
 
+(defun parse-push-expr (form)
+  "Parses a cst-set-expr"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "PUSH" (string (car form)))))
+  (make-instance 'cst-push-expr 
+                 :target (parse-expr (nth 2 form)) 
+                 :val (parse-expr (nth 1 form))))
+
 (defun parse-arr-lit (form)
   "Parses a cst-arr-lit"
   (assert (and (listp form) (symbolp (car form)) 
@@ -82,6 +90,8 @@
      (parse-anon-fn form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "SET"))
      (parse-set-expr form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "PUSH"))
+     (parse-push-expr form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "ARR"))
      (parse-arr-lit form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "IF"))

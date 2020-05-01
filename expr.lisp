@@ -24,6 +24,9 @@
 (defgeneric set-in-place (env place val)
   (:documentation "Set the given place to the given value. val should be a
                    constant."))
+(defgeneric modify-in-place (env place fn)
+  (:documentation "The place is requested, then given to the function. The
+                   place is assumed dirty after the function returns."))
 
 (defmethod eval-expr-place (env (e expr))
   (error "Unimpl getting place from ~S" e))
@@ -33,6 +36,10 @@
   (:documentation "A simple place that represents a space in the env"))
 (defmethod set-in-place ((env env) (p id-place) val)
   (setf (env-lookup env (id p)) val))
+(defmethod modify-in-place ((env env) (p id-place) fn)
+  (funcall fn (env-lookup env (id p)))
+  (when (>= (id p) 0) 
+    (setf (aref (dirty-globals env) (id p)) t)))
 
 (defclass constant (expr) 
   ((val :initarg :val :accessor val)
@@ -44,6 +51,30 @@
     ((ty-eq (ty e) *ty-bool*) (if (string= (string (val e)) "T") t nil))
     (t (val e))))
 (defmethod find-dependent-env-vals ((e constant)) nil)
+
+(defclass push-expr (expr)
+  ((place :initarg :place :accessor place :type expr)
+   (val :initarg :val :accessor val :type expr)))
+(defmethod walk-expr ((e push-expr) fn &optional val) 
+  (let ((val (funcall fn e val)))
+    (walk-expr (place e) fn val)
+    (walk-expr (val e) fn val)))
+(defmethod eval-expr ((env env) (e push-expr)) 
+  (modify-in-place env (eval-expr-place env (place e)) 
+                   (lambda (arr) (vector-push-extend (eval-expr env (val e)) arr))))
+(defmethod find-dependent-env-vals ((e push-expr))
+  (let ((place-id 
+          (cond
+            ((typep (place e) 'id-place)
+             (id (place e)))
+            (t (error "Unimpl finding dependent env vals for place ~S" (place e)))
+            ))
+        (val-ids (find-dependent-env-vals (val e))))
+    ;; If global var
+    (concatenate 
+      'list
+      (if (>= place-id 0) (list place-id) nil)
+      val-ids)))
 
 (defclass set-expr (expr)
   ((place :initarg :place :accessor place :type expr)
@@ -135,7 +166,7 @@
 
 ;; TODO Typecheck that all body exprs return the same type, since the value of
 ;; a loop expr is the array containing all the iterations of all the body exprs
-(defclass loop-expr (expr)
+(defclass loop-expr (template-dom-node)
   ((item-loc :initarg :item-loc :accessor item-loc :type expr)
    (target :initarg :target :accessor target :type expr)
    (body :initarg :body :accessor body :type list

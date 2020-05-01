@@ -13,7 +13,6 @@
 (var my-text string "Hello")
 (var focused bool f)
 
-
 (pad :l 8 :r 8 :t 8 :b 8 :bg-col #xeeeeeeff
      (col :max-w 180
           (text-input :h 80 :w 180 :bg-col (if focused #xeeeeeeee #xaaaaaaaa) 
@@ -21,3 +20,27 @@
                       :bind-state-text my-text)
           (empty :w 160 :h 8)
           (load-bar (length my-text) 40 180 8)))
+
+(defcomp percentage (val int max-val int)
+         (view (text (int (* 100.0 (/ (num val) (num max-val)))) "%")))
+
+(var my-list (arr int) (arr 1 2 3))
+
+(var counter int 10)
+(pad :l 8 :r 8 :t 8 :b 8 (col (row
+  ;; '-' button
+  (pad :l 8 :r 8 :t 8 :b 8 :bg-col #xffccccff 
+      :on-click (fn (e mouse-event) void 
+                  (set counter (- counter 1)))
+      (text "-"))
+
+  ;; Counter
+  (pad :l 8 :r 8 :t 8 :b 8 (percentage counter 10))
+
+  ;; '+' button
+  (pad :l 8 :r 8 :t 8 :b 8 :bg-col #xccccffff 
+      :on-click (fn (e mouse-event) void 
+                  (set counter (+ counter 1)))
+      (text "+")))
+                              (row (for x in my-list (text x)))
+                              ))

@@ -80,6 +80,20 @@
                             :ty (ret (metadata (get-type target))))))
           (t (error "Expected fn / component"))))))
 
+(defclass cst-push-expr (cst-node)
+  ((target :initarg :target :accessor target :type cst-node)
+   (val :initarg :val :accessor val :type cst-node))
+  (:documentation "A push expression
+                   
+                   # Examples
+                   (var my-list (arr 1 2 3))
+                   (push 4 my-list)"))
+
+(defmethod to-expr ((s scope) (c cst-push-expr))
+  (make-instance 'push-expr
+                 :place (to-expr s (target c))
+                 :val (to-expr s (val c))))
+
 (defclass cst-set-expr (cst-node)
   ((target :initarg :target :accessor target :type cst-node)
    (val :initarg :val :accessor val :type cst-node))
@@ -197,6 +211,14 @@
 (defmethod to-expr ((s scope) (c cst-arr-lit)) 
   (make-instance 'arr-constructor 
                  :vals (mapcar (curry #'to-expr s) (val c))))
+(defmethod to-ty ((s scope) (c cst-arr-lit))
+  "Turn this into a type descriptor, assuming there is only one argument, and
+   this argument can be turned into a type."
+  (when (/= 1 (length (val c)))
+   (error "(arr) is only a type descriptor with 1 arg, found ~a" 
+          (length (val c))))
+  (make-ty-arr (to-ty s (car (val c)))))
+
 
 (defclass cst-var-decl ()
   ((name :initarg :name :accessor name :type string)

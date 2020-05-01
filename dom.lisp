@@ -76,6 +76,8 @@
 (defclass template-dom-node (dom-node) 
   ((dependent-env-vals 
      :initarg :dependent-env-vals 
+     :initform (make-array '(0) :element-type 'var-id 
+                           :fill-pointer 0 :adjustable t)
      :accessor dependent-env-vals 
      :type (array var-id)
      :documentation "An array of environment IDs |should all be positive, since
@@ -103,7 +105,9 @@
 (defmethod find-nodes-which-need-expanding ((e env) (n template-dom-node))
   (let ((res (list)))
    (walk-expr n (lambda (x val)
-                  (when (and (not val) (dom-needs-expanding e x)) 
+                  (when (and (not val) 
+                             (typep x 'template-dom-node) 
+                             (dom-needs-expanding e x)) 
                     (push x res)
                     x)) 
              nil)
@@ -127,6 +131,9 @@
                    this."))
 
 (defmethod init-dependent-env-vals ((e expr)))
+
+(defmethod init-dependent-env-vals ((e loop-expr))
+  (setf (dependent-env-vals e) (apply #'vector (find-dependent-env-vals e))))
 
 (defmethod eval-expr ((env env) (n template-dom-node))
   (expand-template-dom-node env n))
@@ -300,10 +307,13 @@
 (defmethod expand-template-dom-node ((e env) (expr expr))
   (let ((val (eval-expr e expr)))
     (cond
-      ((vectorp val) (loop for v across val append 
-                           (cond ((vectorp v) (coerce v 'list))
-                                 ((listp v) v)
-                                 (t (list v)))))
+      ((vectorp val) 
+       (let ((ret (loop for v across val append 
+                        (cond ((vectorp v) (coerce v 'list))
+                              ((listp v) v)
+                              (t (list v))))))
+         (when (typep expr 'loop-expr)
+           (setf (related-concrete-nodes expr) ret))))
       ((listp val) val)
       (t (list
            (make-instance
