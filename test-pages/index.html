@@ -40,7 +40,7 @@
 (every 1000 (set counter (+ counter 1)))
 
 (pad :t 32 :l 32 
-     (col
+     (col 
        (text counter)
        (pad :b 48
             (pad :l 16 :r 16 :t 16 :b 12 
@@ -52,7 +52,7 @@
                                   :bg-col (if twoot-input-focused #xffffffff #xeeeeeeff))
                       (load-bar (length twoot-input) max-twoot-len 320 6)
                       (pad :t 12 (row :w 320
-                        (text :font-col #x4477aaff 
+                        (text :font-col #x4477aaff
                               "Chars remaining: " (- max-twoot-len (length twoot-input)))
                         (empty :weight 1)
                         (button "Submit twoot" (fn (e mouse-event) void))))

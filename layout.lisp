@@ -20,23 +20,14 @@
                  :min-val (float min-val) 
                  :max-val (float max-val)))
 
-(define-condition constraint-intersection-error (error)
-  ((c0 :initarg :c0 :reader c0)
-   (c1 :initarg :c1 :reader c1))
-  (:documentation "If this is signalled, it indicates two constraints (c0 and
-                   c1) were incompatible and could not produce a valid
-                  intersection.
-                  For example, 0 to 300 and 400 to 700. No constraint satisfied
-                  both of these constraints."))
-
-(defmethod intersect ((c0 constraint) (c1 constraint))
+(defmethod intersect ((n concrete-dom-node) (c0 constraint) (c1 constraint))
   "Given 2 constraints, intersect them and calculate a new constraint that
    satisfies both c0 and c1, or error with 'constraint-intersection-error"
   (let ((res (make-instance 'constraint 
                             :min-val (max (min-val c0) (min-val c1))
                             :max-val (min (max-val c0) (max-val c1)))))
     (when (< (max-val res) (min-val res)) 
-      (error 'constraint-intersection-error :c0 c0 :c1 c1))
+      (error 'constraint-intersection-error :c0 c0 :c1 c1 :n n))
     res))
 
 (defmethod extract-constraint-hints ((n concrete-dom-node))
@@ -260,8 +251,8 @@
    Returns the given node"
   (multiple-value-bind 
     (internal-wcons internal-hcons) (extract-constraint-hints n)
-    (let ((wcons (intersect wcons internal-wcons))
-          (hcons (intersect hcons internal-hcons))) 
+    (let ((wcons (intersect n wcons internal-wcons))
+          (hcons (intersect n hcons internal-hcons))) 
       (cond 
         ((typep n 'concrete-text-node)
          (layout-text n wcons hcons))

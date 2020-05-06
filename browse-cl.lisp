@@ -306,6 +306,32 @@
 (defun render-main ()
   (flush-and-render *painter*))
 
+(defun load-error-page (e)
+  (load-page `(pad :l 32 :t 32
+                   (text :font-col #x770000ff 
+                         ,(format nil "ERROR: ~a" 
+                                  (pretty-print-error e))))))
+
+(defun load-page* (forms)
+  (handler-case
+    (progn 
+      (multiple-value-bind (tree env) 
+        (compile-browser-program forms)
+        (setf *root* tree)
+        (setf *env* env))
+      (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x))) 
+      (update-root-concrete :force t :with-redraw nil)
+      (set-dirty-globals *env* t)
+      (sync-bindings *env* *root-concrete*)
+      (setf *atlas-manager* (make-atlas-manager))
+      (setf *painter* (make-painter *atlas-manager*))
+      (update-root-concrete))
+    (error (e) 
+           (print e)
+           (load-error-page e))))
+
+(defun load-page (&rest forms) (load-page* forms))
+
 (defun reload-page ()
   "Reload the page with *site-port* and *site-origin*."
 
@@ -313,20 +339,11 @@
          (input-stream (make-string-input-stream 
                          (drakma:http-request url)))) 
     (format t "Reloading ~a~%" url)
-    (multiple-value-bind (tree env) 
-      (compile-browser-program 
-        (loop with res do (setf res (read input-stream nil 'eof))
-              until (eq res 'eof)
-              collect res))
-      (setf *root* tree)
-      (setf *env* env))
-    (walk-expr *root* (lambda (x val) (declare (ignore val)) (init-dependent-env-vals x))) 
-    (update-root-concrete :force t :with-redraw nil)
-    (set-dirty-globals *env* t)
-    (sync-bindings *env* *root-concrete*)
-    (setf *atlas-manager* (make-atlas-manager))
-    (setf *painter* (make-painter *atlas-manager*))
-    (update-root-concrete)))
+    (handler-case
+     (load-page* (loop with res do (setf res (read input-stream nil 'eof))
+                     until (eq res 'eof)
+                     collect res))
+     (error (e) (load-error-page e)))))
 
 (defun init ()
   (setf (clear-color cepl.context::*primary-context*) 
@@ -400,7 +417,9 @@
     (init)
     (loop while running do
           (livesupport:continuable 
-            (update))))
+            (handler-case
+             (update)
+             (t (e) (load-error-page e))))))
   (defun stop-main ()
     (setf running nil)))
 
