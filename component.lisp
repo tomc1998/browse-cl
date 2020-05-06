@@ -5,12 +5,12 @@
 (defclass component ()
   ((view :initarg :view :accessor view :type template-dom-node)))
 
-(defmethod expand-component ((c cst-component) attrs children)
+(defmethod expand-component ((s scope) (c cst-component) attrs children)
   "Expand c into a regular template component, given the args
 
    @param attrs - a list of 'attr
    @param children - a list of 'expr"
-  (let ((s (create-global-scope)))
+  (let ((s (subscope s)))
     (loop for a in attrs do (set-in-scope s (name a) (val a)))
     (loop for p in (remove-if-not #'pos (params c)) 
           for val in children do 

@@ -74,13 +74,29 @@
     ((is-col (eq (tag n) 'col))
      (space-left (if is-col (max-val hcons) (max-val wcons)))
      ;; Cross-axis constraint
-     (child-cross-cons (if is-col (constraint 0 (max-val wcons)) 
-                           (constraint 0 (max-val hcons))))
+     (child-cross-cons (if is-col (constraint (max-val wcons) (max-val wcons)) 
+                           (constraint (max-val hcons) (max-val hcons))))
      ;; Total weight of all components, for distributing 'slack' weight
      (total-weight (loop for c in (children n) sum (get-layout-weight c)))
+     (justify-attr (find-attr n "JUSTIFY"))
+     (align-attr (find-attr n "ALIGN"))
+     (justify (when justify-attr (val (val justify-attr))))
+     (align (when align-attr (val (val align-attr))))
+     (justify-space-around (and justify (equalp justify "space-around")))
+     (align-stretch (and align (equalp justify "stretch")))
      (weighted-spaces (make-array (list (length (children n))) 
                                   :initial-element -1.0 
                                   :element-type 'single-float)))
+    (when (and justify-space-around (eq space-left +pos-inf+))
+      (error 'layout-error ":justify space-around specified, 
+                            but container size in main axis is infinite"))
+    (when (and align-stretch (eq (max-val child-cross-cons) +pos-inf+))
+      (error 'layout-error ":align stretch specified, 
+                            but container size in cross axis is infinite"))
+    (when (not align-stretch) 
+      (setf child-cross-cons
+            (if is-col (constraint (min-val wcons) (max-val wcons)) 
+                (constraint (min-val hcons) (max-val hcons)))))
     (labels 
       ((get-main-axis-max-constraint-hint (n) 
          (multiple-value-bind (w h) (extract-constraint-hints n)
@@ -140,12 +156,18 @@
       ;; Re-layout everything with the additional weighted spaces
       (loop for c in (children n) 
             for ws across weighted-spaces 
+            for ii from 0
             with curr-pos = 0.0
 
             ;; If weight = 0, we've already layed this out, so we can just skip
-            ;; it & assign its position later
+            ;; it & assign its position
             if (= 0.0 (get-layout-weight c)) do
-              (set-main-axis-pos c curr-pos)
+              (set-main-axis-pos c 
+                                 ;; If :justify space-around, distribute the
+                                 ;; space evenly and add to its position
+                                 (if justify-space-around 
+                                     (+ curr-pos (* (+ 1 ii) (/ space-left (+ 1 (length (children n))))))
+                                     curr-pos))
             else if (= ws -2.0) do ;; Weighted component which has been trimmed
               (if is-col         ;; to its max size, no need to constrain here 
                   (layout c 0.0 curr-pos child-cross-cons (constraint))
@@ -212,10 +234,14 @@
          (ri (if ri-attr (val (val ri-attr)) 0))
          (to (if to-attr (val (val to-attr)) 0))
          (bo (if bo-attr (val (val bo-attr)) 0))
-         (c (first (children n))))
+         (c (first (children n)))
+         (max-wcons (- (max-val wcons) le ri))
+         (max-hcons (- (max-val hcons) to bo))
+         (min-wcons (min max-wcons (min-val wcons)))
+         (min-hcons (min max-hcons (min-val hcons))))
     (layout c le to 
-            (constraint 0 (- (max-val wcons) le ri))
-            (constraint 0 (- (max-val hcons) to bo)))
+            (constraint min-wcons max-wcons)
+            (constraint min-hcons max-hcons))
     (setf (layout-annot n)
           (make-instance 'layout-annot
                          :size (vec2 (float (max (+ le ri (x (size (layout-annot c)))) (min-val wcons))) 

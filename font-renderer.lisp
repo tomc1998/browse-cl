@@ -53,10 +53,14 @@
                     :r-mask #xff000000 :g-mask #x00ff0000 
                     :b-mask #x0000ff00 :a-mask #x000000ff))
          ;; Render all lines of text to a separate surface
-         (line-surfaces (loop for l in lines collect (sdl2-ttf:render-utf8-blended font l r g b 0)))
+         (line-surfaces (loop for l in lines collect (sdl2-ttf:render-utf8-blended font l r g b 255)))
          (ret-tmp nil)
          ;; Hold our return value
          (ret nil))
+    (sdl2-ffi.functions:sdl-set-surface-blend-mode 
+      surface sdl2-ffi:+sdl-blendmode-none+)
+    (sdl2:fill-rect surface (sdl2:make-rect 0 0 width height) 
+                    #x00ffffff)
     ;; Blit all line-surfaces onto surface
     (loop for ii from 0 for ls in line-surfaces do
           (sdl2:blit-surface ls (sdl2:make-rect 0 0 width line-height)

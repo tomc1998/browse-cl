@@ -60,6 +60,12 @@
   (make-instance 'cst-arr-lit
                  :val (loop for n in (nthcdr 1 form) 
                             collect (parse-expr n))))
+(defun parse-arr-ty (form)
+  "Parses a cst-arr-ty"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "ARR-T" (string (car form)))))
+  (make-instance 'cst-arr-ty :val (parse-expr (nth 1 form))))
+
 
 (defun parse-loop (form)
   "Parse a cst-loop"
@@ -88,12 +94,16 @@
     ;; Anonymous function
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FN"))
      (parse-anon-fn form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FN-T"))
+     (parse-fn-ty form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "SET"))
      (parse-set-expr form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "PUSH"))
      (parse-push-expr form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "ARR"))
      (parse-arr-lit form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "ARR-T"))
+     (parse-arr-ty form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "IF"))
      (parse-if form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FOR"))
@@ -135,6 +145,15 @@
         (ret-ty (parse-expr (nth 2 form)))
         (body (mapcar #'parse-expr (nthcdr 3 form))))
     (make-instance 'cst-fn :params params :ret-ty ret-ty :body body)))
+
+(defun parse-fn-ty (form)
+  "Parses a cst-fn-ty"
+  (assert (and (listp form) (symbolp (car form)) 
+               (= 3 (length form))
+               (string= (string (car form)) "FN-T")))
+  (let ((params (mapcar #'parse-expr (nth 1 form)))
+        (ret-ty (parse-expr (nth 2 form))))
+    (make-instance 'cst-fn-ty :params params :ret-ty ret-ty)))
 
 (defun parse-var-decl (form)
   ;; (var <name> [<ty>] <val>)

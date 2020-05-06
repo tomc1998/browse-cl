@@ -17,3 +17,5 @@
       :documentation "The concrete-dom-node that failed to layout")
    (wcons :initarg :wcons :reader wcons :type constraint)
    (hcons :initarg :hcons :reader hcons :type constraint)))
+
+(define-condition layout-error (simple-error) ())

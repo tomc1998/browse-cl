@@ -114,7 +114,7 @@
   (layout *root-concrete*)
   (when with-redraw 
     (clear-painter *painter*)
-    (render-dom *painter* *root-concrete* -100.0 -100.0 :is-debug nil)
+    (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug nil)
     (flush *painter*)))
 
 (defun unload-all-cache-textures ()
@@ -183,7 +183,7 @@
                   (if (and (>= x dx) (<= x (+ dw dx))
                              (>= y dy) (<= y (+ dh dy)))
                       (progn (let ((on-click-fn (find-attr d "ON-CLICK")))
-                               (when on-click-fn  (funcall (val (val on-click-fn)) env nil)))
+                               (when on-click-fn (funcall (val (val on-click-fn)) env nil)))
                              ;; Kinda messy... we really want an 'input supertype' here,
                              ;; but for now we only care about text input
                              (when (and (typep d 'simple-concrete-dom-node) (eq 'text-input (tag d)))
@@ -255,11 +255,13 @@
             (y (plus-c:c-ref e sdl2-ffi:sdl-event :button :y)))
        (setf *mouse-x* x)
        (setf *mouse-y* y)
-       (process-dom-hover *root-concrete*)
-       (sync-bindings *env* *root-concrete*)
-       ;; TODO check if we need to update, rather than doing it regardless
-       ;; ALso, try subtree updates
-       (update-root-concrete)))
+       ;(process-dom-hover *root-concrete*)
+       ;(sync-bindings *env* *root-concrete*)
+       ;;; TODO check if we need to update, rather than doing it regardless
+       ;;; ALso, try subtree updates
+       ;(update-root-concrete)
+       
+       ))
     ((eq :mousewheel (sdl2:get-event-type e))
      (let* ((y* (plus-c:c-ref e sdl2-ffi:sdl-event :wheel :y))
             (direction (plus-c:c-ref e sdl2-ffi:sdl-event :wheel :direction))
@@ -306,10 +308,13 @@
 
 (defun reload-page ()
   "Reload the page with *site-port* and *site-origin*."
+
   (let* ((url (format nil "http://~a:~a/" *site-origin* *site-port*))
          (input-stream (make-string-input-stream 
                          (drakma:http-request url)))) 
     (format t "Reloading ~a~%" url)
+    (setf *atlas-manager* (make-atlas-manager))
+    (setf *painter* (make-painter *atlas-manager*))
     (multiple-value-bind (tree env) 
       (compile-browser-program 
         (loop with res do (setf res (read input-stream nil 'eof))
@@ -342,7 +347,7 @@
       '((var my-text string "Hello")
         (var focused bool f)
         (defcomp load-bar (value int max-value int w int h int)
-                 (view (col :bg-col #xaaaaaaff :w w :h h
+                 (view (row :bg-col #xaaaaaaff :w w :h h
                             (empty :bg-col #xff0000ff :h h :w 
                                    (* (/ (num value) (num max-value)) w)))))
         (col
@@ -362,6 +367,7 @@
   (step-host) ;; Poll events
   (update-repl-link)
   (clear)
+  (clear-painter *painter*)
   (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug nil)
   (render-main)
   (swap))

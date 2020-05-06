@@ -35,8 +35,7 @@
                        (declare (ignore k)) 
                        ;; TODO unclear whether or not c-array is finalized,
                        ;; seem to get mem errors with this line, check source
-                       ;;(free-c-array (data v))
-                       ) 
+                       (free-c-array (data v))) 
                      resource-map)))
     res))
 

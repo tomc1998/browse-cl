@@ -7,6 +7,8 @@
         (s (create-global-scope))
         (e (make-instance 'env)))
 
+    ;; TODO make this order-independent
+
     ;; Setup env space for any var decls
     (loop for statement in cst
           when (typep statement 'cst-var-decl) do

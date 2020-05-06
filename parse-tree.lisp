@@ -24,10 +24,11 @@
 
 (defmethod to-expr ((s scope) (c cst-fn-call))
   (let* ((target (find-in-scope s (fn-name c)))
-         (arg0 (when (> (length (pos-args c)) 0) 
-                 (to-expr s (nth 0 (pos-args c)))))
-         (param-types (loop for x in (pos-args c) collect 
-                            (get-type (to-expr s x))))
+         (pos-arg-exprs (loop for x in (pos-args c) collect 
+                            (to-expr s x)))
+         (arg0 (when (> (length (pos-args c)) 0) (first pos-arg-exprs)))
+         (param-types (loop for x in pos-arg-exprs collect 
+                            (get-type x)))
          (method-target 
            (when arg0 
              (car
@@ -44,7 +45,7 @@
             (make-instance 'apply-expr 
                            :name (fn-name c) :fn (eval-fn method-target)
                            :ty (ret-ty method-target)
-                           :args (mapcar (curry #'to-expr s) (pos-args c)))
+                           :args pos-arg-exprs)
             (error "Unimpl method call"))
         ;; Call freestanding fn or create component
         (cond 
@@ -52,7 +53,7 @@
            (let ((attrs (loop for a in (key-args c) collect 
                               (make-instance 'attr :name (name a) 
                                              :val (to-expr s (val a)))))
-                 (children (mapcar (curry #'to-expr s) (pos-args c))))
+                 (children pos-arg-exprs))
              (cond
                ((string= "TEXT" (fn-name c))
                 (make-instance 'template-text-node :attrs attrs :exprs children))
@@ -63,7 +64,7 @@
                (t (make-instance 
                     'template-fat-dom-node
                     :component 
-                    (expand-component (metadata (get-type target)) 
+                    (expand-component s (metadata (get-type target)) 
                                       attrs children)
                     :attrs attrs
                     :children children)))))
@@ -144,6 +145,20 @@
       :body (loop for b in (body c) collect 
                   (to-expr loop-scope b)))))
 
+(defclass cst-fn-ty (cst-node)
+  ((params :initarg :params :accessor params :type list
+           :documentation "List of cst-node")
+   (ret-ty :initarg :ret-ty :accessor ret-ty :type cst-node))
+  (:documentation "A function type specifier. For a function
+                   declaration, see cst-fn.
+
+                   # Example
+                   (fn (int int) int)"))
+
+(defmethod to-ty ((s scope) (c cst-fn-ty))
+  (make-ty-fn (mapcar (curry #'to-ty s) (params c))
+              (to-ty s (ret-ty c))))
+
 (defclass cst-param (cst-node)
   ((name :initarg :name :accessor name :type string)
    (ty :initarg :ty :accessor ty :type cst-node)))
@@ -167,6 +182,9 @@
     :ty (make-ty-fn (loop for p in (params c) collect (to-ty s (ty p))) 
                     (to-ty s (ret-ty c)))
     :val (eval `(lambda (--internal-env-- ,@(loop for p in (params c) collect (intern (name p))))
+                  (declare (ignorable --internal-env--
+                                      ,@(loop for p in (params c) collect 
+                                              (intern (name p)))))
                   ,@(loop for b in (body c) collect 
                           `(eval-expr --internal-env-- ,(to-expr s b)))))))
 
@@ -211,14 +229,16 @@
 (defmethod to-expr ((s scope) (c cst-arr-lit)) 
   (make-instance 'arr-constructor 
                  :vals (mapcar (curry #'to-expr s) (val c))))
-(defmethod to-ty ((s scope) (c cst-arr-lit))
+
+(defclass cst-arr-ty (cst-node)
+  ((val :initarg :val :accessor val :type list
+        :documentation "A type descriptor for an array
+                        # Example
+                        (arr-t int)")))
+(defmethod to-ty ((s scope) (c cst-arr-ty))
   "Turn this into a type descriptor, assuming there is only one argument, and
    this argument can be turned into a type."
-  (when (/= 1 (length (val c)))
-   (error "(arr) is only a type descriptor with 1 arg, found ~a" 
-          (length (val c))))
-  (make-ty-arr (to-ty s (car (val c)))))
-
+  (make-ty-arr (to-ty s (val c))))
 
 (defclass cst-var-decl ()
   ((name :initarg :name :accessor name :type string)
