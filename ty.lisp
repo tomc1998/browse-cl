@@ -86,8 +86,7 @@
   (cond 
     ((symbolp form) 
      (let ((res (find-in-scope s (string form))))
-       (if res res (error "Unrecognised type '~a'" form))
-       ))
+       (if res res (error "Unrecognised type '~a'" form))))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "ARR")) 
      (make-ty-arr (parse-ty-expr s (nth 1 form))))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "OPT")) 
@@ -104,6 +103,29 @@
                                    (loop for p in params 
                                          append (list (name p) (name (ty p)))))
                  :metadata params :kind 'prim))
+
+(defun make-ty-struct (fields)
+  "Makes a struct type.
+   
+   The internal representation of a struct is an array, where each item of the
+   array corresponds with one of the given struct fields. Struct fields are
+   ordered."
+
+  (let ((ret (make-instance 
+               'ty :name (format nil "STRUCT<~{~a:~a~^,~}>"
+                                 (loop for f in fields append
+                                       (list (name f) (name (ty f))))) 
+               :metadata fields
+               :kind 'struct)))
+    (loop for f in fields for ii from 0 do 
+          (push (make-instance 
+                  'ty-inline-method 
+                  :name (name f)
+                  :params (list)
+                  :ret-ty (ty f)
+                  :eval-fn (eval `(lambda (this) (aref this ,ii))))
+                (methods ret)))
+    ret)) 
 
 (defun make-ty-arr (inner)
   "inner - the inner type of the arr"

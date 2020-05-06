@@ -21,6 +21,17 @@
            (inner-t (metadata ty))) 
        (loop for v in val do 
              (vector-push-extend (fit-to-constant v inner-t) ret))
+       ret))
+    ((eq (kind ty) 'struct)
+     (assert (listp val))
+     (let ((ret (make-array (list (length (metadata ty)))
+                            :fill-pointer 0
+                            :initial-element nil))) 
+       (loop for f in (metadata ty) do
+             (let ((res (assoc (intern (name f) :keyword) val)))
+               (assert res)
+               (vector-push (fit-to-constant (cdr res) (ty f)) ret)
+               ))
        ret))))
 
 (defun decode-json-to-constant (strm ty)

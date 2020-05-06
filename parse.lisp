@@ -60,12 +60,23 @@
   (make-instance 'cst-arr-lit
                  :val (loop for n in (nthcdr 1 form) 
                             collect (parse-expr n))))
+
 (defun parse-arr-ty (form)
   "Parses a cst-arr-ty"
   (assert (and (listp form) (symbolp (car form)) 
                (string= "ARR-T" (string (car form)))))
   (make-instance 'cst-arr-ty :val (parse-expr (nth 1 form))))
 
+(defun parse-struct-ty (form)
+  "Parses a cst-struct-ty"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "STRUCT" (string (car form)))))
+  (make-instance 'cst-struct-ty :fields 
+                 (loop for (k v) on (nthcdr 1 form) by #'cddr 
+                       do (assert (symbolp k)) collect
+                       (make-instance 'cst-struct-field
+                                      :name (string k)
+                                      :ty (parse-expr v)))))
 
 (defun parse-loop (form)
   "Parse a cst-loop"
@@ -114,6 +125,8 @@
      (parse-arr-lit form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "ARR-T"))
      (parse-arr-ty form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "STRUCT"))
+     (parse-struct-ty form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "IF"))
      (parse-if form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FOR"))

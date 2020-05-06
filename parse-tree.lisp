@@ -252,6 +252,27 @@
    this argument can be turned into a type."
   (make-ty-arr (to-ty s (val c))))
 
+(defclass cst-struct-field (cst-node)
+  ((name :initarg :name :accessor name :type string)
+   (ty :initarg :ty :accessor ty :type cst-node)))
+
+(defclass cst-struct-ty (cst-node)
+  ((fields :initarg :fields :accessor fields :type list
+           :documentation "List of cst-struct-field")) 
+  (:documentation "A type descriptor for a struct
+                   # Example
+                   (struct
+                     name string
+                     age int)"))
+(defmethod to-ty ((s scope) (c cst-struct-ty))
+  "Turn this into a type descriptor, assuming there is only one argument, and
+   this argument can be turned into a type."
+  (make-ty-struct 
+    (loop for f in (fields c) collect
+          (make-instance 'struct-field
+                         :name (name f)
+                         :ty (to-ty s (ty f))))))
+
 (defclass cst-typedef ()
   ((name :initarg :name :accessor name :type string)
    (val :initarg :val :accessor val :type cst-node))
