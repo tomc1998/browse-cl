@@ -194,7 +194,7 @@
                                  (eq 'text-input (tag d))
                                  (val (focused (state d))))
                         (unfocus-elem d)))
-                  (pos la))) (vec2 0.0 0.0))))
+                  (v2:+ parent-pos (pos la)))) (vec2 0.0 0.0))))
 
 (defun process-dom-hover (dom)
   (let ((x *mouse-x*) (y *mouse-y*))
@@ -210,7 +210,7 @@
                             (>= y dy) (<= y (+ dh dy)))
                        (set-internal-dnsv (hover (state d)) t)
                        (set-internal-dnsv (hover (state d)) nil))
-                   (pos la))) (vec2 0.0 0.0))))
+                   (v2:+ parent-pos (pos la)))) (vec2 0.0 0.0))))
 
 (defun process-dom-scroll (dom x-scroll y-scroll)
   (when (not (= x-scroll 0)) (error "Unimplemented x scrolling"))
@@ -236,7 +236,7 @@
                             (new-scroll-val (+ y-scroll (val (scroll-y (state d)))))
                             (clamped (max 0 (min max-y-scroll new-scroll-val)))) 
                       (set-internal-dnsv (scroll-y (state d)) clamped)))
-                   (pos la))) (vec2 0.0 0.0))))
+                   (v2:+ parent-pos (pos la)))) (vec2 0.0 0.0))))
 
 (defun oninput (e)
   (cond
