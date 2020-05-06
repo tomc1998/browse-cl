@@ -99,6 +99,14 @@
       (if (>= place-id 0) (list place-id) nil)
       val-ids)))
 
+(defclass expr-seq (expr)
+  ((exprs :initarg :exprs :accessor exprs :type list)))
+(defmethod walk-expr ((e expr-seq) fn &optional val) 
+  (let ((val (funcall fn e val)))
+    (loop for ex in (exprs e) do (walk-expr ex fn val))))
+(defmethod eval-expr ((env env) (e expr-seq))
+  (loop for ex in (exprs e) do (eval-expr env ex)))
+
 (defclass apply-expr (expr)
   ((name :initarg :name :initform "UNKNOWN" :accessor name 
          :documentation "Optional debug name for fn")

@@ -1,6 +1,6 @@
 (in-package #:browse-cl)
 
-(defparameter *atlas-size* 1024)(defparameter *atlas-size* 1024)
+(defparameter *atlas-size* 1024)
 
 (defclass cpu-atlas-data ()
   ((data :initarg :data :accessor data :type c-array 

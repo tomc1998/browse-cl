@@ -244,7 +244,6 @@
   ((name :initarg :name :accessor name :type string)
    (ty :initarg :ty :accessor ty :type (or null cst-node))
    (val :initarg :val :accessor val :type cst-node)))
-
 (defmethod to-expr ((s scope) (c cst-var-decl)) 
   (let ((e (to-expr s (val c)))
         (var (find-in-scope s (name c)))) 
@@ -253,3 +252,10 @@
     (make-instance 'var-decl :var (id var) 
                  :ty (if (ty c) (to-ty s (ty c)) (get-type e))
                  :val e)))
+
+(defclass cst-every ()
+  ((millis :initarg :millis :accessor millis :type expr)
+   (exprs :initarg :exprs :accessor exprs :type list))
+  (:documentation "# Example
+                   ;; Run the exprs every second
+                   (every 1000 ...)"))

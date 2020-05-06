@@ -166,6 +166,14 @@
      (val (parse-expr val-form)))
     (make-instance 'cst-var-decl :name name :ty ty :val val)))
 
+(defun parse-every (form)
+  ;; (every <milliseconds> <fn>)
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= (string (car form)) "EVERY")))
+  (make-instance 'cst-every
+                 :millis (parse-expr (nth 1 form))
+                 :exprs (mapcar #'parse-expr (nthcdr 2 form))))
+
 (defun parse-top-level-form (form)
   "Given a scope & dom node expr, parse & return a template-dom-node."
   (when (not (listp form)) 
@@ -178,6 +186,7 @@
     (cond
       ((string= "VAR" tagname) (parse-var-decl form))
       ((string= "DEFCOMP" tagname) (parse-defcomp form))
+      ((string= "EVERY" tagname) (parse-every form))
       (t (parse-expr form)))))
 
 (defun parse-program (forms)

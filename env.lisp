@@ -2,6 +2,12 @@
 
 (deftype var-id () 'fixnum)
 
+(defclass interval-fn ()
+  ((time-per-exec :initarg :time-per-exec :accessor time-per-exec)
+   (time-until-next-exec :initform 0 :accessor time-until-next-exec)
+   (fn :initarg :fn :accessor fn :type expr))
+  (:documentation "Evaluated the given 'fn' each 'time-per-exec' millis"))
+
 (defclass env () 
   ((globals :initform (make-array '(1024)
                                   :initial-element nil
@@ -39,7 +45,9 @@
                               the current frame
                               
                               The value directly BELOW the base pointer is the
-                              location of the previous stack base"))
+                              location of the previous stack base")
+  (interval-fns :initform (list) :accessor interval-fns
+                :documentation "A list of interval-fn"))
   (:documentation "A runtime environment, with stack & global map"))
 
 (defmethod set-dirty-globals ((e env) val)

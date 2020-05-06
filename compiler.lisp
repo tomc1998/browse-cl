@@ -34,4 +34,17 @@
                                                              :metadata statement
                                                              :kind 'component))))
 
+    ;; Setup iterative functions ('every' functions)
+    (loop for statement in cst
+          when (typep statement 'cst-every)
+          do (push (make-instance 
+                     'interval-fn
+                     :time-per-exec 
+                     (eval-expr e (to-expr s (millis statement)))
+                     :fn (make-instance 
+                           'expr-seq
+                           :exprs (mapcar (curry #'to-expr s) 
+                                          (exprs statement))))
+                   (interval-fns e)))
+
     (values (to-expr s (car (last cst))) e)))

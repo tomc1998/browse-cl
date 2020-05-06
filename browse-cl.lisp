@@ -313,8 +313,6 @@
          (input-stream (make-string-input-stream 
                          (drakma:http-request url)))) 
     (format t "Reloading ~a~%" url)
-    (setf *atlas-manager* (make-atlas-manager))
-    (setf *painter* (make-painter *atlas-manager*))
     (multiple-value-bind (tree env) 
       (compile-browser-program 
         (loop with res do (setf res (read input-stream nil 'eof))
@@ -326,6 +324,8 @@
     (update-root-concrete :force t :with-redraw nil)
     (set-dirty-globals *env* t)
     (sync-bindings *env* *root-concrete*)
+    (setf *atlas-manager* (make-atlas-manager))
+    (setf *painter* (make-painter *atlas-manager*))
     (update-root-concrete)))
 
 (defun init ()
@@ -363,9 +363,31 @@
   (sync-bindings *env* *root-concrete*)
   (update-root-concrete))
 
+(defun update-interval-fns (env dt)
+  "Given an env, update all interval fns.
+
+   dt - integer milliseconds since last update"
+
+  (when
+    (loop for interval-fn in (interval-fns env) with updated = nil do
+          (decf (time-until-next-exec interval-fn) dt)
+          when (< (time-until-next-exec interval-fn) 0) do
+          ;; Evaluate & reset timer
+          (setf updated t)
+          (eval-expr env (fn interval-fn))
+          (incf (time-until-next-exec interval-fn) 
+                (time-per-exec interval-fn))
+          finally (return updated))
+    (sync-bindings *env* *root-concrete*)
+    (update-root-concrete)))
+
 (defun update ()
   (step-host) ;; Poll events
   (update-repl-link)
+
+  ;; Update interval fns
+  (update-interval-fns *env* 17)
+  
   (clear)
   (clear-painter *painter*)
   (render-dom *painter* *root-concrete* 0.0 0.0 :is-debug nil)
