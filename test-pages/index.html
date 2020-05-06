@@ -36,11 +36,15 @@
 (var max-twoot-len int 140)
 
 (var counter int 0)
+(var some-number int 0)
 
-(every 1000 (set counter (+ counter 1)))
+(every 1000 
+       (set some-number (request int "localhost:9898/some-number"))
+       (set counter (+ counter 1)))
 
 (pad :t 32 :l 32 
      (col 
+       (text "Some number: " some-number)
        (text counter)
        (pad :b 48
             (pad :l 16 :r 16 :t 16 :b 12 

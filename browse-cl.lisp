@@ -313,7 +313,7 @@
                                   (pretty-print-error e))))))
 
 (defun load-page* (forms)
-  (handler-case
+  (pretty-handle-errors
     (progn 
       (multiple-value-bind (tree env) 
         (compile-browser-program forms)
@@ -325,10 +325,7 @@
       (sync-bindings *env* *root-concrete*)
       (setf *atlas-manager* (make-atlas-manager))
       (setf *painter* (make-painter *atlas-manager*))
-      (update-root-concrete))
-    (error (e) 
-           (print e)
-           (load-error-page e))))
+      (update-root-concrete))))
 
 (defun load-page (&rest forms) (load-page* forms))
 
@@ -339,11 +336,10 @@
          (input-stream (make-string-input-stream 
                          (drakma:http-request url)))) 
     (format t "Reloading ~a~%" url)
-    (handler-case
+    (pretty-handle-errors
      (load-page* (loop with res do (setf res (read input-stream nil 'eof))
                      until (eq res 'eof)
-                     collect res))
-     (error (e) (load-error-page e)))))
+                     collect res)))))
 
 (defun init ()
   (setf (clear-color cepl.context::*primary-context*) 
@@ -411,15 +407,23 @@
   (render-main)
   (swap))
 
+(defparameter *debug-mode* t)
+
+(defmacro pretty-handle-errors (&rest forms)
+  "Execute the given forms, if *debug-mode* == nil then load the error as a
+   page for the user rather than breaking the program"
+  `(if (not *debug-mode*) 
+       (handler-case (progn ,@forms) (t (e) (load-error-page e)))
+       (progn ,@forms)))
+
 (let ((running nil))
   (defun main ()
     (setf running t)
     (init)
     (loop while running do
           (livesupport:continuable 
-            (handler-case
-             (update)
-             (t (e) (load-error-page e))))))
+            (pretty-handle-errors (update))
+            )))
   (defun stop-main ()
     (setf running nil)))
 

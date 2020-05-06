@@ -80,7 +80,7 @@
                  :body (mapcar #'parse-expr (nthcdr 4 form))))
 
 (defun parse-if (form)
-  "Parse a cst-loop"
+  "Parse a cst-if"
   (assert (and (listp form) (symbolp (car form)) 
                (string= "IF" (string (car form)))))
   (assert (and (<= (length form) 4) (>= (length form) 3)))
@@ -88,6 +88,16 @@
                  :cond-expr (parse-expr (nth 1 form))
                  :t-expr (parse-expr (nth 2 form))
                  :f-expr (parse-expr (nth 3 form))))
+
+(defun parse-request (form)
+  "Parse a cst-request-expr"
+  (assert (and (listp form) (symbolp (car form)) 
+               (string= "REQUEST" (string (car form)))))
+  (assert (and (>= (length form) 3)))
+  (make-instance 'cst-request-expr
+                 :ret-ty (parse-expr (nth 1 form))
+                 :url (parse-expr (nth 2 form))
+                 :args (mapcar #'parse-expr (nthcdr 3 form))))
 
 (defun parse-expr (form)
   (cond
@@ -108,6 +118,8 @@
      (parse-if form))
     ((and (listp form) (symbolp (car form)) (string= (string (car form)) "FOR"))
      (parse-loop form))
+    ((and (listp form) (symbolp (car form)) (string= (string (car form)) "REQUEST"))
+     (parse-request form))
     ((listp form) (parse-fn-call form))
     ((integerp form) (make-instance 'cst-int-lit :val form))
     ((numberp form) (make-instance 'cst-num-lit :val form))

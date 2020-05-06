@@ -53,7 +53,5 @@
              (floor (min-val (c1 e))) (floor (max-val (c1 e)))))
     ((typep e 'var-not-found)
      (format nil "Var '~(~a~)' not found" (name e)))
-    (t 
-     (format t "~a" e)
-     (format nil "~S" e))))
+    (t (format nil "~S" e))))
 

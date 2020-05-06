@@ -95,6 +95,18 @@
                  :place (to-expr s (target c))
                  :val (to-expr s (val c))))
 
+(defclass cst-request-expr (cst-node)
+  ((ret-ty :initarg :ret-ty :accessor ret-ty :type cst-node)
+   (url :initarg :url :accessor url :type cst-node)
+   (args :initarg :args :accessor args :type list))
+  (:documentation "# Examples
+                   (request int \"localhost:9898/num-page-views\" ...)"))
+(defmethod to-expr ((s scope) (c cst-request-expr))
+  (make-instance 'request-expr 
+                 :ret-ty (to-ty s (ret-ty c)) 
+                 :url (to-expr s (url c))
+                 :args (mapcar (curry #'to-expr s) (args c))))
+
 (defclass cst-set-expr (cst-node)
   ((target :initarg :target :accessor target :type cst-node)
    (val :initarg :val :accessor val :type cst-node))

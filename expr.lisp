@@ -76,6 +76,28 @@
       (if (>= place-id 0) (list place-id) nil)
       val-ids)))
 
+(defclass request-expr (expr)
+  ((url :initarg :url :accessor url :type expr)
+   (ret-ty :initarg :ret-ty :accessor ret-ty :type ty)
+   (args :initarg :args :accessor args :type list)))
+(defmethod walk-expr ((e request-expr) fn &optional val)
+  (let ((val (funcall fn e val)))
+    (walk-expr (url e) fn val)
+    (loop for a in (args e) do (walk-expr a fn val))))
+(defmethod eval-expr ((env env) (e request-expr))
+  (decode-json-to-constant 
+    (flexi-streams:make-flexi-stream
+      (flexi-streams:make-in-memory-input-stream
+        (drakma:http-request 
+          (format nil "http://~a" (eval-expr env (url e)))
+          :decode-content nil)))
+    (ret-ty e)))
+(defmethod find-dependent-env-vals ((e request-expr))
+  (concatenate 'list
+               (find-dependent-env-vals (url e))
+               (apply (curry #'concatenate 'list) 
+                      (mapcar #'find-dependent-env-vals (args e)))))
+
 (defclass set-expr (expr)
   ((place :initarg :place :accessor place :type expr)
    (val :initarg :val :accessor val :type expr)))

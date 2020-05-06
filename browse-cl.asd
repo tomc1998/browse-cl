@@ -6,7 +6,7 @@
   :license  "Specify license here"
   :version "0.0.1"
   :serial t
-  :depends-on (#:cepl #:alexandria #:cl-ppcre #:rtg-math.vari #:cepl.sdl2 #:cepl.sdl2-ttf #:swank #:livesupport #:cepl.skitter.sdl2 #:dirt #:drakma)
+  :depends-on (#:cepl #:alexandria #:cl-ppcre #:rtg-math.vari #:cepl.sdl2 #:cepl.sdl2-ttf #:swank #:livesupport #:cepl.skitter.sdl2 #:dirt #:drakma #:cl-json)
   :components ((:file "package")
 
                ;; Util / defs
@@ -29,6 +29,7 @@
                (:file "ty")
                (:file "expr")
                (:file "inline-methods")
+               (:file "json-decode")
 
                ;; DOM
                (:file "dom")
