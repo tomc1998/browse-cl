@@ -9,6 +9,12 @@
 
     ;; TODO make this order-independent
 
+    ;; Setup typedefs
+    (loop for statement in cst
+          when (typep statement 'cst-typedef) do
+          (set-in-scope s (name statement) (to-ty s (val statement))))
+
+
     ;; Setup env space for any var decls
     (loop for statement in cst
           when (typep statement 'cst-var-decl) do

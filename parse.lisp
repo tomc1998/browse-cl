@@ -186,6 +186,17 @@
                  :millis (parse-expr (nth 1 form))
                  :exprs (mapcar #'parse-expr (nthcdr 2 form))))
 
+(defun parse-type-decl (form)
+  ;; (type <name> <def>) ;; a typedef
+  (assert (and (listp form) (= 3 (length form)) 
+               (symbolp (car form)) 
+               (string= (string (car form)) "TYPE")
+               (symbolp (nth 1 form))))
+  (assert (symbolp (nth 1 form)))
+  (make-instance 'cst-typedef
+                 :name (string (nth 1 form))
+                 :val (parse-expr (nth 2 form))))
+
 (defun parse-top-level-form (form)
   "Given a scope & dom node expr, parse & return a template-dom-node."
   (when (not (listp form)) 
@@ -197,6 +208,7 @@
   (let ((tagname (string (car form))))
     (cond
       ((string= "VAR" tagname) (parse-var-decl form))
+      ((string= "TYPE" tagname) (parse-type-decl form))
       ((string= "DEFCOMP" tagname) (parse-defcomp form))
       ((string= "EVERY" tagname) (parse-every form))
       (t (parse-expr form)))))

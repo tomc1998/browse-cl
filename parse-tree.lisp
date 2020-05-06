@@ -252,6 +252,14 @@
    this argument can be turned into a type."
   (make-ty-arr (to-ty s (val c))))
 
+(defclass cst-typedef ()
+  ((name :initarg :name :accessor name :type string)
+   (val :initarg :val :accessor val :type cst-node))
+  (:documentation "# Example
+                   (type entity-id int)
+                   (type int-array (arr int))
+                   (type 2d-int-array (arr (arr (int)))"))
+
 (defclass cst-var-decl ()
   ((name :initarg :name :accessor name :type string)
    (ty :initarg :ty :accessor ty :type (or null cst-node))
