@@ -56,7 +56,8 @@
 (defclass attr ()
   ((name :initarg :name :accessor name :type string)
    (val :initarg :val :accessor val :type expr))
-  (:documentation "A DOM node attribute."))
+  (:documentation "A names keyword parameter, commonly used as a DOM node
+                   attribute, also used in make-struct"))
 
 (defclass const-attr ()
   ((name :initarg :name :accessor name :type string)
@@ -269,6 +270,14 @@
                    (progn
                      (setf (val dnsv) (eval-expr env (val attr))))))))))))
 
+(defclass sentinel-dom-node (concrete-dom-node)
+  ((attrs :initform nil))
+  (:documentation "Exists as a sentinel in the concrete tree, for when template
+                   dom nodes expand into nothing and still need to locate their
+                   'position' in the concrete tree - like a loop over an empty
+                   list."))
+
+
 (defclass simple-concrete-dom-node (concrete-dom-node)
   ((tag :initarg :tag :accessor tag :type concrete-tag)
    (children :initarg :children :accessor children :type list :initform (list)
@@ -281,6 +290,7 @@
                    a single 'val', which contains the string of this text
                    node."))
 
+(defmethod walk-expr ((d sentinel-dom-node) fn &optional (val nil)) (funcall fn d val))
 (defmethod walk-expr ((d concrete-text-node) fn &optional (val nil)) (funcall fn d val))
 (defmethod walk-expr ((d simple-concrete-dom-node) fn &optional (val nil)) 
   (let ((val (funcall fn d val)))
@@ -308,12 +318,17 @@
   (let ((val (eval-expr e expr)))
     (cond
       ((vectorp val) 
-       (let ((ret (loop for v across val append 
-                        (cond ((vectorp v) (coerce v 'list))
-                              ((listp v) v)
-                              (t (list v))))))
-         (when (typep expr 'loop-expr)
-           (setf (related-concrete-nodes expr) ret))))
+       ;; If empty just make a single sentinel, otherwise populate a list from
+       ;; the vector
+       (let ((ret (if (= 0 (length val)) 
+                      (list (make-instance 'sentinel-dom-node))
+                      (loop for v across val append 
+                            (cond ((vectorp v) (coerce v 'list))
+                                  ((listp v) v)
+                                  (t (list v)))))))
+         ;; If empty loop then return a sentinel
+         (if (typep expr 'loop-expr) (setf (related-concrete-nodes expr) ret))
+         ret))
       ((listp val) val)
       (t (list
            (make-instance
@@ -363,3 +378,10 @@
 
 
 (defmethod expand-template-dom-node ((e env) (n concrete-dom-node)) (list n))
+
+(defgeneric pretty-print-dom-node (d))
+(defmethod pretty-print-dom ((d concrete-dom-node)) "Unknown")
+(defmethod pretty-print-dom ((d simple-concrete-dom-node))
+  (format nil "(~a ...)" (tag d)))
+(defmethod pretty-print-dom ((d concrete-text-node))
+  (format nil "(TEXT \"~a   . . .\")" (subseq (val d) 0 16)))

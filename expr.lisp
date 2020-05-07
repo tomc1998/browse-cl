@@ -85,13 +85,20 @@
     (walk-expr (url e) fn val)
     (loop for a in (args e) do (walk-expr a fn val))))
 (defmethod eval-expr ((env env) (e request-expr))
-  (decode-json-to-constant 
-    (flexi-streams:make-flexi-stream
-      (flexi-streams:make-in-memory-input-stream
-        (drakma:http-request 
-          (format nil "http://~a" (eval-expr env (url e)))
-          :decode-content nil)))
-    (ret-ty e)))
+  (let* ((content (loop for a in (args e) collect (eval-expr env a)))
+         (content-ser (json:encode-json-to-string content))
+         (res (drakma:http-request 
+                (format nil "http://~a" (eval-expr env (url e)))
+                :decode-content nil
+                :force-binary t
+                :method :post
+                :content-type (when (> (length (args e)) 0) "application/json")
+                :content (when (> (length (args e)) 0) content-ser)))) 
+    (when (not (eq *ty-void* (ret-ty e))) 
+      (decode-json-to-constant 
+        (flexi-streams:make-flexi-stream
+          (flexi-streams:make-in-memory-input-stream res))
+        (ret-ty e)))))
 (defmethod find-dependent-env-vals ((e request-expr))
   (concatenate 'list
                (find-dependent-env-vals (url e))
@@ -174,6 +181,27 @@
     (loop for x in (vals e) do
           (vector-push-extend (eval-expr env x) ret))
     ret))
+
+(defclass struct-constructor (expr)
+  ((ty :initarg :ty :accessor ty :type ty)
+   (fields :initarg :fields :accessor fields :type list
+           :documentation "List of 'attr")))
+(defmethod walk-expr ((e struct-constructor) fn &optional val)
+  (let ((val (funcall fn e val)))
+    (loop for v in (fields e) do (funcall fn (val v) val))))
+(defmethod find-dependent-env-vals ((e struct-constructor))
+  (apply (curry #'concatenate 'list)
+         (mapcar (lambda (x) (find-dependent-env-vals (val x))) (fields e))))
+(defmethod get-type ((e struct-constructor)) (ty e))
+(defmethod eval-expr ((env env) (e struct-constructor))
+  (assert (eq (kind (ty e)) 'struct))
+  (loop with ret = (make-array (list (length (metadata (ty e))))
+                               :fill-pointer 0
+                               :initial-element nil) 
+        for f in (metadata (ty e)) do
+        (let ((sfield (find-if (lambda (x) (string= (name x) (name f))) (fields e))))
+          (vector-push (eval-expr env (val sfield)) ret))
+        finally (return ret))) 
 
 (defclass if-expr (expr)
   ((cond-expr :initarg :cond-expr :accessor cond-expr :type expr)

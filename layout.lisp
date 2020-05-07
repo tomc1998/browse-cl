@@ -102,12 +102,12 @@
        (calculate-final-size ()
          "Return (vec2 w h), also applying our given wcons / hcons"
          (let*
-           ((main (loop for c in (children n) do
+           ((main (float (loop for c in (children n) do
                         (assert (layout-annot c))
-                        sum (get-main-axis-size c)))
-            (cross (loop for c in (children n) do
+                        sum (get-main-axis-size c))))
+            (cross (float (loop for c in (children n) do
                          (assert (layout-annot c))
-                         maximizing (get-cross-axis-size c)))
+                         maximizing (get-cross-axis-size c))))
             (wh (if is-col (vec2 cross main) (vec2 main cross))))
            (vec2 (max (min-val wcons) (x wh))
                  (max (min-val hcons) (y wh))))))
@@ -115,8 +115,8 @@
       (loop for c in (children n)
             when (= (get-layout-weight c) 0) do
             (if is-col 
-              (layout c 0 0 child-cross-cons (constraint 0 space-left))
-              (layout c 0 0 (constraint 0 space-left) child-cross-cons))
+              (layout c 0.0 0.0 child-cross-cons (constraint 0.0 space-left))
+              (layout c 0.0 0.0 (constraint 0.0 space-left) child-cross-cons))
             (assert (layout-annot c))
             (decf space-left (if is-col (y (size (layout-annot c))) 
                                  (x (size (layout-annot c)))))
@@ -184,7 +184,7 @@
    font - the font to use for rendering
    width - the maximum width of the text, used for wrapping "
   (when (= 0 (length text))
-    (return-from measure-wrapped-text (values 0 0)))
+    (return-from measure-wrapped-text (values 0.0 0.0)))
 
   (let* ((lines (wrap-text font text width))
          (line-size (multiple-value-list (sdl2-ttf:size-text font (car lines)))))
@@ -272,6 +272,9 @@
          (setf (layout-annot n) 
                (make-instance 'layout-annot :size (vec2 (min-val wcons) 
                                                         (min-val hcons)))))
+        ((typep n 'sentinel-dom-node)
+         (setf (layout-annot n)
+               (make-instance 'layout-annot :size (vec2 0.0 0.0))))
         (t (error "Unimpl layout for ~S" n)))
       (setf (x (pos (layout-annot n))) (float x))
       (setf (y (pos (layout-annot n))) (float y))))

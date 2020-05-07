@@ -242,6 +242,20 @@
   (make-instance 'arr-constructor 
                  :vals (mapcar (curry #'to-expr s) (val c))))
 
+(defclass cst-struct-lit (cst-node)
+  ((ty :initarg :ty :accessor ty :type cst-node
+       :documentation "The type of the struct to make")
+   (key-args :initarg :key-args :accessor key-args :type list
+             :documentation "List of cst-key-arg"
+             ))
+  (:documentation "# Example
+                   (make-struct foo :name \"Tom\" :id 0)"))
+(defmethod to-expr ((s scope) (c cst-struct-lit))
+  (make-instance 
+    'struct-constructor :ty (to-ty s (ty c))
+    :fields (loop for a in (key-args c) collect
+                  (make-instance 'attr :name (name a) :val (to-expr s (val a))))))
+
 (defclass cst-arr-ty (cst-node)
   ((val :initarg :val :accessor val :type list
         :documentation "A type descriptor for an array

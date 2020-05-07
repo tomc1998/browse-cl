@@ -30,13 +30,6 @@
 
 (define-condition layout-error (simple-error) ())
 
-(defgeneric pretty-print-dom-node (d))
-(defmethod pretty-print-dom ((d concrete-dom-node)) "Unknown")
-(defmethod pretty-print-dom ((d simple-concrete-dom-node))
-  (format nil "(~a ...)" (tag d)))
-(defmethod pretty-print-dom ((d concrete-text-node))
-  (format nil "(TEXT \"~a   . . .\")" (subseq (val d) 0 16)))
-
 (defun pretty-print-error (e)
   "Return a string, the pretty-printed form of the given error"
   (cond
@@ -53,5 +46,6 @@
              (floor (min-val (c1 e))) (floor (max-val (c1 e)))))
     ((typep e 'var-not-found)
      (format nil "Var '~(~a~)' not found" (name e)))
-    (t (format nil "~S" e))))
+    (t (let ((res (format nil "~a" e)))
+         (subseq res 0 (min (length res) 512))))))
 

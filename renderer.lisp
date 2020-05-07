@@ -113,6 +113,10 @@
                       :col font-col)))))
     (remove-stencil p n x y :depth depth :clip-depth (- clip-depth 1))))
 
+(defmethod render-dom ((p painter) (n sentinel-dom-node) x y &key (depth 0) (is-debug nil) (clip-depth 0))
+  (declare (ignore depth is-debug clip-depth p n))
+  )
+
 (defmethod render-dom ((p painter) (n concrete-text-node) x y &key (depth 0) (is-debug nil) (clip-depth 0))
   "is-debug - when true, renders coloured boxes around all nodes"
   (assert (layout-annot n))

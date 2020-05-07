@@ -3,6 +3,7 @@
 
 (defun fit-to-constant (val ty) 
   (cond
+    ((ty-eq ty *ty-void*) nil)
     ((ty-eq ty *ty-int*) 
      (assert (typep val 'number))
      (floor val))

@@ -30,6 +30,12 @@
                     (button "Like" (fn (e mouse-event) void))
                     (button "Retwoot" (fn (e mouse-event) void)))))))) 
 
+(type twoot (struct
+              author string
+              body string))
+
+(var twoots (arr-t twoot) (arr))
+
 (var twoot-input string "")
 (var twoot-input-focused bool f)
 (var max-twoot-len int 140)

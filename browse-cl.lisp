@@ -1,5 +1,12 @@
 (in-package #:browse-cl)
 
+(defmacro pretty-handle-errors (&rest forms)
+  "Execute the given forms, if *debug-mode* == nil then load the error as a
+   page for the user rather than breaking the program"
+  `(if (not *debug-mode*) 
+       (handler-case (progn ,@forms) (t (e) (load-error-page e)))
+       (progn ,@forms)))
+
 (defun make-ortho (le to ri bo ne fa)
   (make-array '(16) 
               :initial-contents 
@@ -307,10 +314,11 @@
   (flush-and-render *painter*))
 
 (defun load-error-page (e)
-  (load-page `(pad :l 32 :t 32
-                   (text :font-col #x770000ff 
-                         ,(format nil "ERROR: ~a" 
-                                  (pretty-print-error e))))))
+  (let ((errstr (format nil "ERROR: ~a" (pretty-print-error e)))) 
+    (print errstr)
+    (load-page `(pad :l 32 :t 32 :max-w 400
+                     (text :font-col #x770000ff 
+                           ,errstr)))))
 
 (defun load-page* (forms)
   (pretty-handle-errors
@@ -333,13 +341,16 @@
   "Reload the page with *site-port* and *site-origin*."
 
   (let* ((url (format nil "http://~a:~a/" *site-origin* *site-port*))
-         (input-stream (make-string-input-stream 
-                         (drakma:http-request url)))) 
+         (input-stream (flexi-streams:make-flexi-stream
+                         (flexi-streams:make-in-memory-input-stream
+                           (drakma:http-request 
+                             url
+                             :decode-content nil))))) 
     (format t "Reloading ~a~%" url)
     (pretty-handle-errors
-     (load-page* (loop with res do (setf res (read input-stream nil 'eof))
-                     until (eq res 'eof)
-                     collect res)))))
+      (load-page* (loop with res do (setf res (read input-stream nil 'eof))
+                        until (eq res 'eof)
+                        collect res)))))
 
 (defun init ()
   (setf (clear-color cepl.context::*primary-context*) 
@@ -395,8 +406,6 @@
     (update-root-concrete)))
 
 (defun update ()
-  (step-host) ;; Poll events
-  (update-repl-link)
 
   ;; Update interval fns
   (update-interval-fns *env* 17)
@@ -409,21 +418,15 @@
 
 (defparameter *debug-mode* t)
 
-(defmacro pretty-handle-errors (&rest forms)
-  "Execute the given forms, if *debug-mode* == nil then load the error as a
-   page for the user rather than breaking the program"
-  `(if (not *debug-mode*) 
-       (handler-case (progn ,@forms) (t (e) (load-error-page e)))
-       (progn ,@forms)))
-
 (let ((running nil))
   (defun main ()
     (setf running t)
     (init)
     (loop while running do
           (livesupport:continuable 
-            (pretty-handle-errors (update))
-            )))
+            (step-host) ;; Poll events
+            (update-repl-link)
+            (pretty-handle-errors (update)))))
   (defun stop-main ()
     (setf running nil)))
 
