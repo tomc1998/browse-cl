@@ -1,0 +1,21 @@
+(var text-val string "")
+(var max-chars int 16)
+
+(col
+  (pad :l 8 :r 8 :t 8 :b 8
+     :bg-col #xaaaaeeff
+     (text-input :bind-state-text text-val 
+                 :after-text-bind 
+                 (fn () void (set text-val 
+                                  (trunc text-val max-chars)))
+                 :bg-col #xffffffff :w 180 :h 80))
+  (row 
+    :bg-col #xff0000ff
+    :w 180
+    :h 8
+    (empty :bg-col #x00ff00ff
+           :h 8
+           :w (int (* 180.0 (/ (num (length text-val)) 
+                               (num max-chars))))))
+ (text "Chars remaining: " (- max-chars (length text-val))))
+

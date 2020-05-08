@@ -173,6 +173,11 @@
     (when (not e) (setf *curr-focused-elem* nil) (return-from update-focused-elem-text))
     (when (and (typep e 'simple-concrete-dom-node) (eq 'text-input (tag e)))
       (set-internal-dnsv (text (state e)) *text-input-buffer*))))
+(defun get-focused-elem-text ()
+  (let ((e (find-with-persist-id *root-concrete* *curr-focused-elem*))) 
+    (when (not e) (setf *curr-focused-elem* nil) (return-from get-focused-elem-text ""))
+    (when (and (typep e 'simple-concrete-dom-node) (eq 'text-input (tag e)))
+      (val (text (state e))))))
 
 (defun process-on-click (env dom)
   "Call on-click events on dom nodes
@@ -281,6 +286,7 @@
        (vector-push-extend (code-char text) *text-input-buffer*)
        (update-focused-elem-text)
        (sync-bindings *env* *root-concrete*)
+       (setf *text-input-buffer* (make-str-buf (get-focused-elem-text)))
        (update-root-concrete)))
     ((eq :keydown (sdl2:get-event-type e))
          (let ((keysym (plus-c:c-ref e sdl2-ffi:sdl-event :key :keysym :sym)))
@@ -344,7 +350,7 @@
          (input-stream (flexi-streams:make-flexi-stream
                          (flexi-streams:make-in-memory-input-stream
                            (drakma:http-request 
-                             url
+                             url :force-binary t
                              :decode-content nil))))) 
     (format t "Reloading ~a~%" url)
     (pretty-handle-errors
@@ -416,7 +422,7 @@
   (render-main)
   (swap))
 
-(defparameter *debug-mode* t)
+(defparameter *debug-mode* nil)
 
 (let ((running nil))
   (defun main ()

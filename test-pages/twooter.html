@@ -43,6 +43,8 @@
                  (col :w 320
                       (text-input :bind-state-text twoot-input
                                   :bind-state-focused twoot-input-focused
+                                  :after-text-bind (fn () void (set twoot-input 
+                                    (substr twoot-input 0 max-twoot-len))
                                   :h 80
                                   :bg-col (if twoot-input-focused #xffffffff #xeeeeeeff))
                       (load-bar (length twoot-input) max-twoot-len 320 6)

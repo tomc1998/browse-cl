@@ -39,6 +39,7 @@
       (def-inline-methods 
         (length () int (length this))
         (+ (s string) string (concatenate 'string this s))
+        (trunc (end int) string (subseq this 0 (min (length this) end)))
         (= (s string) bool (string= this s))))
 
 (setf (methods *ty-num*)

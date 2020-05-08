@@ -173,7 +173,7 @@
   (funcall (curry #'every 
                   (lambda (t-list) (is-subtype s (nth 0 t-list) 
                                               (nth 1 t-list))))
-           (loop for t0 in param-types 
+           (loop for t0 in (cdr param-types) 
                  for t1 in (params (metadata ty))
                  collect (list t0 t1))))
 

@@ -223,6 +223,7 @@
 (defmethod find-with-persist-id ((root concrete-dom-node) id)
   "Given a persist-id, find the node that matches, or nil if not available (it
    probably failed to persist through an update)"
+  (when (null id) (return-from find-with-persist-id nil))
   (let ((ret nil)) 
     (walk-expr root 
                (lambda (n val) 
@@ -258,7 +259,8 @@
                                   (val dnsv))
                       (setf (needs-push dnsv) nil))
                     (setf (val dnsv) (eval-expr env (val attr))))))) 
-         (let ((attr (find-attr x "BIND-STATE-TEXT")))
+         (let ((attr (find-attr x "BIND-STATE-TEXT"))
+               (after-update (find-attr x "AFTER-TEXT-BIND")))
            (when attr
              (let ((dnsv (text (state x))))
                (if (needs-push dnsv)
@@ -266,7 +268,10 @@
                      (set-in-place env 
                                    (eval-expr-place env (val attr))
                                    (val dnsv))
-                     (setf (needs-push dnsv) nil))
+                     (setf (needs-push dnsv) nil)
+                     (when after-update
+                       (funcall (eval-expr env (val after-update)) env)
+                       (sync-bindings env d)))
                    (progn
                      (setf (val dnsv) (eval-expr env (val attr))))))))))))
 
